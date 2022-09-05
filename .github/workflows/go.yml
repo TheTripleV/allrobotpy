@@ -20,4 +20,4 @@ jobs:
     with:
       enable_raspbian: false
       enable_sphinx_check: false
-      working-directory: "wpiutil"
+      working_directory: "wpiutil"

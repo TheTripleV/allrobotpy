@@ -33,9 +33,9 @@ on:
         required: true
         type: string
 
-defaults:
-  run:
-    working-directory: ${{ inputs.working_directory }}
+# defaults:
+#   run:
+#     working-directory: ${{ inputs.working_directory }}
 
 jobs:
   #
