@@ -14,13 +14,13 @@ inputs:
     required: true
     type: string
 
-defaults:
-  run:
-    working-directory: ${{ inputs.working_directory }}
-
 runs:
   using: composite
   steps:
+  - name: cd
+    shell: bash
+    run: |
+      cd ${{ inputs.working_directory }}
   - name: Setup default OSX deployment target
     shell: bash
     run: |
