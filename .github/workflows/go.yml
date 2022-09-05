@@ -10,7 +10,7 @@ on:
 jobs:
   wpiutil:
     # needs: [build]
-    uses: robotpy/build-actions/.github/workflows/package-ci.yml@v2022
+    uses: ./.github/workflows/package-ci.yml
     with:
       enable_raspbian: false
       enable_sphinx_check: false
