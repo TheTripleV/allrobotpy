@@ -8,10 +8,16 @@ on:
     # - '*'
 
 jobs:
+  check:
+    runs-ons: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: psd/black@stable
+
   wpiutil:
     # needs: [build]
     uses: ./.github/workflows/package-ci.yml
     with:
       enable_raspbian: false
       enable_sphinx_check: false
-      working_directory: "wpiutil"
+      working-directory: "wpiutil"

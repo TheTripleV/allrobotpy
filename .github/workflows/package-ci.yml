@@ -29,22 +29,15 @@ on:
         default: >-
           ["windows-2019", "macos-10.15", "ubuntu-18.04"]
         type: string
-      working_directory:
+      working-directory:
         required: true
         type: string
 
 defaults:
-  working-directory: ${{ inputs.working_directory }}
-  # run:
-  #   working-directory: ${{ working_directory }}
+  run:
+    working-directory: ${{ inputs.working-directory }}
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: psf/black@stable
-
   #
   # Build native wheels
   #
@@ -67,6 +60,8 @@ jobs:
       with:
         python-version: ${{ matrix.python_version }}
     - uses: ./.github/actions/setup-cxx
+      with: 
+        working-directory: ${{ inputs.working-directory }}
       if: matrix.os == 'ubuntu-18.04'
 
     - uses: ./.github/actions/install-robotpy-build
@@ -74,15 +69,19 @@ jobs:
     - uses: ./.github/actions/build-wheel
       with:
         osx_target: ${{ inputs.osx_target }}
+        working-directory: ${{ inputs.working-directory }}
     - uses: ./.github/actions/test-native-wheel
-
+      with: 
+        working-directory: ${{ inputs.working-directory }}
     - uses: ./.github/actions/validate-sphinx
+      with: 
+        working-directory: ${{ inputs.working-directory }}
       if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: "dist-${{ matrix.os }}"
-        path: dist
+    # - uses: actions/upload-artifact@v2
+    #   with:
+    #     name: "dist-${{ matrix.os }}"
+    #     path: dist
 
   #
   # Build roboRIO/raspbian wheels
@@ -118,9 +117,6 @@ jobs:
       if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
       with:
         python: /build/venv/bin/cross-python
+        working-directory: ${{ inputs.working-directory }}
 
-    - uses: actions/upload-artifact@v2
-      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
-      with:
-        name: dist-${{ matrix.os.name }}
-        path: dist
+
