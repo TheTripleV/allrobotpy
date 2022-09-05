@@ -1,0 +1,82 @@
+---
+name: Package Pure CI
+
+on:
+  workflow_call:
+    inputs:
+      enable_sphinx_check:
+        required: false
+        default: true
+        type: boolean
+
+      working_directory:
+        required: true
+        type: string
+
+defaults:
+  working-directory: ${{ inputs.working_directory }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: psf/black@stable
+  
+  #
+  # Build a wheel
+  #
+
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - run: pip install build
+
+    - run: python -m build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+  #
+  # Test wheels
+  #
+
+  test:
+    needs: [build]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-2019, macos-10.15, ubuntu-18.04]
+        python_version:
+        - '3.6'
+        - '3.7'
+        - '3.8'
+        - '3.9'
+        - '3.10'
+        architecture: [x64]
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python_version }}
+        architecture: ${{ matrix.architecture }}
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+    - uses: ./.github/actions/test-native-wheel
+
+    - uses: ./.github/actions/validate-sphinx
+      if: inputs.enable_sphinx_check && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'

@@ -1,0 +1,17 @@
+---
+name: go
+
+on:
+  pull_request:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  wpiutil:
+    # needs: [build]
+    uses: robotpy/build-actions/.github/workflows/package-ci.yml@v2022
+    with:
+      enable_raspbian: false
+      enable_sphinx_check: false
+      working_directory: "wpiutil"

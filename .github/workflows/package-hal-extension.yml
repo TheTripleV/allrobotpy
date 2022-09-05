@@ -1,0 +1,54 @@
+---
+name: HAL Extension CI
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+
+defaults:
+  working-directory: ${{ inputs.working_directory }}
+
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: psf/black@stable
+
+  #
+  # Build native wheels
+  #
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-2019, macos-10.15, ubuntu-18.04]
+        python_version:
+        - '3.6'
+        - '3.7'
+        - '3.8'
+        - '3.9'
+        - '3.10'
+        architecture: [x64]
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python_version }}
+        architecture: ${{ matrix.architecture }}
+
+    - uses: ./.github/actions/install-robotpy-build
+    - uses: ./.github/actions/install-build-deps
+    - uses: ./.github/actions/build-wheel
+    - uses: ./.github/actions/test-native-wheel
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: "dist-${{ matrix.os }}"
+        path: dist

@@ -1,0 +1,126 @@
+---
+name: Package CI
+
+on:
+  workflow_call:
+    inputs:
+      enable_rtd:
+        required: false
+        default: true
+        type: boolean
+      enable_sphinx_check:
+        required: false
+        default: true
+        type: boolean
+      enable_raspbian:
+        required: false
+        default: true
+        type: boolean
+      enable_roborio:
+        required: false
+        default: true
+        type: boolean
+      osx_target:
+        required: false
+        default: ''
+        type: string
+      matrix_os:
+        required: false
+        default: >-
+          ["windows-2019", "macos-10.15", "ubuntu-18.04"]
+        type: string
+      working_directory:
+        required: true
+        type: string
+
+defaults:
+  working-directory: ${{ inputs.working_directory }}
+  # run:
+  #   working-directory: ${{ working_directory }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: psf/black@stable
+
+  #
+  # Build native wheels
+  #
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: 
+        os: ${{ fromJSON(inputs.matrix_os) }}
+        python_version:
+        - '3.6'
+        - '3.7'
+        - '3.8'
+        - '3.9'
+        - '3.10'
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python_version }}
+    - uses: ./.github/actions/setup-cxx
+      if: matrix.os == 'ubuntu-18.04'
+
+    - uses: ./.github/actions/install-robotpy-build
+    - uses: ./.github/actions/install-build-deps
+    - uses: ./.github/actions/build-wheel
+      with:
+        osx_target: ${{ inputs.osx_target }}
+    - uses: ./.github/actions/test-native-wheel
+
+    - uses: ./.github/actions/validate-sphinx
+      if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: "dist-${{ matrix.os }}"
+        path: dist
+
+  #
+  # Build roboRIO/raspbian wheels
+  #
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+        - container: robotpy/roborio-cross-ubuntu:2022.3
+          name: roborio
+        - container: robotpy/raspbian-cross-ubuntu:2022.1
+          name: raspbian
+
+    container:
+      image: "${{ matrix.os.container }}"
+
+    steps:
+    - uses: actions/checkout@v2
+      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
+
+    - uses: ./.github/actions/install-robotpy-build
+      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
+      with:
+        python: /build/venv/bin/cross-python
+    - uses: ./.github/actions/install-build-deps
+      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
+      with:
+        python: /build/venv/bin/cross-python
+        wheeldir: ${{ matrix.os.name }}
+    - uses: ./.github/actions/build-wheel
+      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
+      with:
+        python: /build/venv/bin/cross-python
+
+    - uses: actions/upload-artifact@v2
+      if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
+      with:
+        name: dist-${{ matrix.os.name }}
+        path: dist

@@ -1,0 +1,51 @@
+name: build-wheel
+description: "Builds wheel"
+inputs:
+  python:
+    description: "python executable"
+    required: false
+    default: python
+  osx_target:
+    description: Target OSX platform
+    required: false
+    default:
+  working_directory:
+    description: "working directory"
+    required: true
+    type: string
+
+defaults:
+  run:
+    working-directory: ${{ inputs.working_directory }}
+
+runs:
+  using: composite
+  steps:
+  - name: Setup default OSX deployment target
+    shell: bash
+    run: |
+      echo "MACOSX_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
+  - name: Setup override OSX deployment target
+    shell: bash
+    run: |
+      echo "MACOSX_DEPLOYMENT_TARGET=${{ inputs.osx_target }}" >> $GITHUB_ENV
+    if: ${{ inputs.osx_target != '' }}
+
+  - shell: bash
+    run: |
+      ${{ inputs.python }} setup.py bdist_wheel
+    env:
+      RPYBUILD_PARALLEL: 1
+      RPYBUILD_STRIP_LIBPYTHON: 1
+  - shell: bash
+    run: |
+      ORIG_PLAT_TAG="linux_x86_64"
+      MANYLINUX_TAG="manylinux_2_27_x86_64"
+      for x in $(find ./dist -name "*$ORIG_PLAT_TAG.whl"); do mv $x ${x%$ORIG_PLAT_TAG.whl}$MANYLINUX_TAG.whl;done
+      ls -l ./dist/*
+  - shell: bash
+    run: |
+      ORIG_PLAT_TAG="macosx_11_0_x86_64"
+      MAC_COMPAT_TAG="macosx_10_16_x86_64"
+      for x in $(find ./dist -name "*$ORIG_PLAT_TAG.whl"); do mv $x ${x%$ORIG_PLAT_TAG.whl}$MAC_COMPAT_TAG.whl;done
+      ls -l ./dist/*

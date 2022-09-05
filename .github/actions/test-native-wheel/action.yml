@@ -1,0 +1,27 @@
+---
+name: test-native-wheel
+description: "Installs built wheel and runs tests"
+inputs:
+  python:
+    description: "python executable"
+    required: false
+    default: python
+  working_directory:
+    description: "working directory"
+    required: true
+    type: string
+
+defaults:
+  run:
+    working-directory: ${{ inputs.working_directory }}
+
+runs:
+  using: "composite"
+  steps:
+  - shell: bash
+    run: |
+      cd dist
+      python -m pip --disable-pip-version-check install *.whl
+      cd ../tests
+      python -m pip --disable-pip-version-check install -r requirements.txt
+      python run_tests.py

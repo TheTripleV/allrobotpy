@@ -1,0 +1,21 @@
+{
+  "name": "install-robotpy-build",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dist": "ncc build index.js -o dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^1.2.5",
+    "@actions/exec": "^1.0.4",
+    "toml": "^3.0.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.24.0"
+  }
+}
