@@ -46,13 +46,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix: 
-        os: ${{ fromJSON(inputs.matrix_os) }}
+        # os: ${{ fromJSON(inputs.matrix_os) }}
+        os: ["ubuntu-18.04"]
         python_version:
-        - '3.6'
-        - '3.7'
+        # - '3.6'
+        # - '3.7'
         - '3.8'
-        - '3.9'
-        - '3.10'
+        # - '3.9'
+        # - '3.10'
 
     steps:
     - uses: actions/checkout@v2

@@ -9,6 +9,7 @@ async function run() {
     try {
         const pythonPath = core.getInput("python");
         const workingdir = core.getInput("working_directory");
+        console.log(workingdir);
         const tomlString = await fs.readFile(workingdir + "/" + "pyproject.toml");
         const data = toml.parse(tomlString);
         
