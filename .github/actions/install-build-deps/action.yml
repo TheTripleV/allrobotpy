@@ -9,10 +9,14 @@ inputs:
     description: "Wheel directory"
     required: false
     default: linux_x86_64
+  working_directory:
+    required: true
+    type: string
 runs:
   using: "composite"
   steps:
   - shell: bash
+    working-directory: ${{ inputs.working_directory }}
     run: |
       ${{ inputs.python }} -m robotpy_build build-dep --install \
         --find-links https://www.tortall.net/~robotpy/wheels/2022/${{ inputs.wheeldir }}
