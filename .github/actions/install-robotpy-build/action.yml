@@ -5,6 +5,9 @@ inputs:
     description: "python executable"
     required: false
     default: python
+  working_directory:
+    required: true
+    type: string
 runs:
   using: "node12"
   main: dist/index.js

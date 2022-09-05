@@ -8,7 +8,8 @@ async function run() {
     // read toml file
     try {
         const pythonPath = core.getInput("python");
-        const tomlString = await fs.readFile("pyproject.toml");
+        const workingdir = core.getInput("working_directory");
+        const tomlString = await fs.readFile(workingdir + "/" + "pyproject.toml");
         const data = toml.parse(tomlString);
         
         // find robotpy-build in dependencies
