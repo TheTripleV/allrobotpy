@@ -26,6 +26,4 @@ jobs:
     # needs: [build]
     uses: ./.github/workflows/package-hal-extension.yml
     with:
-      enable_raspbian: false
-      enable_sphinx_check: false
       working_directory: "halsim-gui"
