@@ -14,10 +14,18 @@ jobs:
     - uses: actions/checkout@v2
     - uses: psd/black@stable
 
-  wpiutil:
+  # wpiutil:
+  #   # needs: [build]
+  #   uses: ./.github/workflows/package-ci.yml
+  #   with:
+  #     enable_raspbian: false
+  #     enable_sphinx_check: false
+  #     working_directory: "wpiutil"
+
+  halsim-gui:
     # needs: [build]
-    uses: ./.github/workflows/package-ci.yml
+    uses: ./.github/workflows/package-hal-extension.yml
     with:
       enable_raspbian: false
       enable_sphinx_check: false
-      working_directory: "wpiutil"
+      working_directory: "halsim-gui"

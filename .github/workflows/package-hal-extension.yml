@@ -8,10 +8,6 @@ on:
         required: true
         type: string
 
-defaults:
-  working-directory: ${{ inputs.working_directory }}
-
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -27,13 +23,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-2019, macos-10.15, ubuntu-18.04]
+        # os: [windows-2019, macos-10.15, ubuntu-18.04]
+        os: [ubuntu-18.04]
         python_version:
-        - '3.6'
+        # - '3.6'
         - '3.7'
-        - '3.8'
-        - '3.9'
-        - '3.10'
+        # - '3.8'
+        # - '3.9'
+        # - '3.10'
         architecture: [x64]
 
     steps:
@@ -45,10 +42,16 @@ jobs:
 
     - uses: ./.github/actions/install-robotpy-build
     - uses: ./.github/actions/install-build-deps
+      with: 
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/build-wheel
-    - uses: ./.github/actions/test-native-wheel
-
-    - uses: actions/upload-artifact@v2
       with:
-        name: "dist-${{ matrix.os }}"
-        path: dist
+        working_directory: ${{ inputs.working_directory }}
+    - uses: ./.github/actions/test-native-wheel
+      with: 
+        working_directory: ${{ inputs.working_directory }}
+   
+    # - uses: actions/upload-artifact@v2
+    #   with:
+    #     name: "dist-${{ matrix.os }}"
+    #     path: dist
