@@ -14,13 +14,14 @@ inputs:
     required: true
     type: string
 
+defaults:
+  run:
+    working-directory: ${{ inputs.working_directory }}
+
 runs:
   using: composite
   steps:
-  - name: cd
-    shell: bash
-    run: |
-      cd ${{ inputs.working_directory }}
+
   - name: Setup default OSX deployment target
     shell: bash
     run: |
@@ -33,18 +34,21 @@ runs:
 
   - shell: bash
     run: |
+      cd ${{ inputs.working_directory }}
       ${{ inputs.python }} setup.py bdist_wheel
     env:
       RPYBUILD_PARALLEL: 1
       RPYBUILD_STRIP_LIBPYTHON: 1
   - shell: bash
     run: |
+      cd ${{ inputs.working_directory }}
       ORIG_PLAT_TAG="linux_x86_64"
       MANYLINUX_TAG="manylinux_2_27_x86_64"
       for x in $(find ./dist -name "*$ORIG_PLAT_TAG.whl"); do mv $x ${x%$ORIG_PLAT_TAG.whl}$MANYLINUX_TAG.whl;done
       ls -l ./dist/*
   - shell: bash
     run: |
+      cd ${{ inputs.working_directory }}
       ORIG_PLAT_TAG="macosx_11_0_x86_64"
       MAC_COMPAT_TAG="macosx_10_16_x86_64"
       for x in $(find ./dist -name "*$ORIG_PLAT_TAG.whl"); do mv $x ${x%$ORIG_PLAT_TAG.whl}$MAC_COMPAT_TAG.whl;done
