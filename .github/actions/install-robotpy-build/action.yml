@@ -5,9 +5,10 @@ inputs:
     description: "python executable"
     required: false
     default: python
-  working_directory:
-    required: true
-    type: string
+
 runs:
-  using: "node12"
-  main: dist/index.js
+  using: "composite"
+  steps:
+  - shell: bash
+    run: |
+      ${{ inputs.python }} -m pip install robotpy-build

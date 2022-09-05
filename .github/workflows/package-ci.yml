@@ -66,8 +66,6 @@ jobs:
       if: matrix.os == 'ubuntu-18.04'
 
     - uses: ./.github/actions/install-robotpy-build
-      with: 
-        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/install-build-deps
       with: 
         working_directory: ${{ inputs.working_directory }}
