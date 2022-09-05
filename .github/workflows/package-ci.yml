@@ -76,10 +76,10 @@ jobs:
     - uses: ./.github/actions/test-native-wheel
       with: 
         working_directory: ${{ inputs.working_directory }}
-    - uses: ./.github/actions/validate-sphinx
-      with: 
-        working_directory: ${{ inputs.working_directory }}
-      if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
+    # - uses: ./.github/actions/validate-sphinx
+    #   with: 
+    #     working_directory: ${{ inputs.working_directory }}
+    #   if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
 
     # - uses: actions/upload-artifact@v2
     #   with:
@@ -116,10 +116,11 @@ jobs:
       with:
         python: /build/venv/bin/cross-python
         wheeldir: ${{ matrix.os.name }}
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/build-wheel
       if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
       with:
         python: /build/venv/bin/cross-python
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
 
 
