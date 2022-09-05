@@ -4,8 +4,8 @@ name: go
 on:
   pull_request:
   push:
-    tags:
-    - '*'
+    # tags:
+    # - '*'
 
 jobs:
   wpiutil:
