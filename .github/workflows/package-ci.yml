@@ -66,20 +66,20 @@ jobs:
 
     - uses: ./.github/actions/install-robotpy-build
       with: 
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/install-build-deps
       with: 
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/build-wheel
       with:
         osx_target: ${{ inputs.osx_target }}
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/test-native-wheel
       with: 
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/validate-sphinx
       with: 
-        working-directory: ${{ inputs.working_directory }}
+        working_directory: ${{ inputs.working_directory }}
       if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
 
     # - uses: actions/upload-artifact@v2
