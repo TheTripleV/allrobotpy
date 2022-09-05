@@ -29,13 +29,13 @@ on:
         default: >-
           ["windows-2019", "macos-10.15", "ubuntu-18.04"]
         type: string
-      working-directory:
+      working_directory:
         required: true
         type: string
 
 defaults:
   run:
-    working-directory: ${{ inputs.working-directory }}
+    working-directory: ${{ inputs.working_directory }}
 
 jobs:
   #
@@ -61,7 +61,7 @@ jobs:
         python-version: ${{ matrix.python_version }}
     - uses: ./.github/actions/setup-cxx
       with: 
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.working_directory }}
       if: matrix.os == 'ubuntu-18.04'
 
     - uses: ./.github/actions/install-robotpy-build
@@ -69,13 +69,13 @@ jobs:
     - uses: ./.github/actions/build-wheel
       with:
         osx_target: ${{ inputs.osx_target }}
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/test-native-wheel
       with: 
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.working_directory }}
     - uses: ./.github/actions/validate-sphinx
       with: 
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.working_directory }}
       if: inputs.enable_sphinx_check && inputs.enable_rtd && matrix.python_version == '3.7' && matrix.os == 'ubuntu-18.04'
 
     # - uses: actions/upload-artifact@v2
@@ -117,6 +117,6 @@ jobs:
       if: (inputs.enable_raspbian && matrix.os.name == 'raspbian') || (inputs.enable_roborio && matrix.os.name == 'roborio')
       with:
         python: /build/venv/bin/cross-python
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.working_directory }}
 
 
