@@ -61,8 +61,6 @@ jobs:
       with:
         python-version: ${{ matrix.python_version }}
     - uses: ./.github/actions/setup-cxx
-      with: 
-        working-directory: ${{ inputs.working_directory }}
       if: matrix.os == 'ubuntu-18.04'
 
     - uses: ./.github/actions/install-robotpy-build
