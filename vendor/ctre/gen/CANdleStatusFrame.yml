@@ -1,5 +1,0 @@
----
-
-enums:
-  CANdleStatusFrame:
-    subpackage: led
