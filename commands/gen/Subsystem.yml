@@ -2,9 +2,7 @@
 
 extra_includes:
 - frc2/command/Command.h
-
-inline_code: |
-  #include <src/Subsystem.cpp.inl>
+- frc2/command/Commands.h
 
 classes:
   Subsystem:
@@ -13,7 +11,26 @@ classes:
       Periodic:
       SimulationPeriodic:
       SetDefaultCommand:
-        ignore: true # in Subsystem.cpp.inl
       GetDefaultCommand:
       GetCurrentCommand:
       Register:
+      RunOnce:
+        cpp_code: |
+          [](std::shared_ptr<Subsystem> self, std::function<void()> action) {
+            return frc2::cmd::RunOnce(std::move(action), {self});
+          }
+      Run:
+        cpp_code: |
+          [](std::shared_ptr<Subsystem> self, std::function<void()> action) {
+            return frc2::cmd::Run(std::move(action), {self});
+          }
+      StartEnd:
+        cpp_code: |
+          [](std::shared_ptr<Subsystem> self, std::function<void()> start, std::function<void()> end) {
+            return frc2::cmd::StartEnd(std::move(start), std::move(end), {self});
+          }
+      RunEnd:
+        cpp_code: |
+          [](std::shared_ptr<Subsystem> self, std::function<void()> start, std::function<void()> end) {
+            return frc2::cmd::RunEnd(std::move(start), std::move(end), {self});
+          }

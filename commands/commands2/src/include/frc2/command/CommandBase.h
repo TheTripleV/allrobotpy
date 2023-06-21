@@ -5,13 +5,13 @@
 #pragma once
 
 #include <initializer_list>
+#include <span>
 #include <string>
 #include <string_view>
 
 #include <wpi/SmallSet.h>
 #include <wpi/sendable/Sendable.h>
 #include <wpi/sendable/SendableHelper.h>
-#include <wpi/span.h>
 
 #include "frc2/command/Command.h"
 
@@ -26,6 +26,13 @@ class CommandBase : public Command,
   /**
    * Adds the specified Subsystem requirements to the command.
    *
+   * The scheduler will prevent two commands that require the same subsystem
+   * from being scheduled simultaneously.
+   *
+   * Note that the scheduler determines the requirements of a command when it
+   * is scheduled, so this method should normally be called from the command's
+   * constructor.
+   *
    * @param requirements the Subsystem requirements to add
    */
   void AddRequirements(std::initializer_list<std::shared_ptr<Subsystem>> requirements);
@@ -33,12 +40,26 @@ class CommandBase : public Command,
   /**
    * Adds the specified Subsystem requirements to the command.
    *
+   * The scheduler will prevent two commands that require the same subsystem
+   * from being scheduled simultaneously.
+   *
+   * Note that the scheduler determines the requirements of a command when it
+   * is scheduled, so this method should normally be called from the command's
+   * constructor.
+   *
    * @param requirements the Subsystem requirements to add
    */
-  void AddRequirements(wpi::span<std::shared_ptr<Subsystem>> requirements);
+  void AddRequirements(std::span<std::shared_ptr<Subsystem>> requirements);
 
   /**
    * Adds the specified Subsystem requirements to the command.
+   *
+   * The scheduler will prevent two commands that require the same subsystem
+   * from being scheduled simultaneously.
+   *
+   * Note that the scheduler determines the requirements of a command when it
+   * is scheduled, so this method should normally be called from the command's
+   * constructor.
    *
    * @param requirements the Subsystem requirements to add
    */
@@ -46,6 +67,13 @@ class CommandBase : public Command,
 
   /**
    * Adds the specified Subsystem requirement to the command.
+   *
+   * The scheduler will prevent two commands that require the same subsystem
+   * from being scheduled simultaneously.
+   *
+   * Note that the scheduler determines the requirements of a command when it
+   * is scheduled, so this method should normally be called from the command's
+   * constructor.
    *
    * @param requirement the Subsystem requirement to add
    */
@@ -63,7 +91,7 @@ class CommandBase : public Command,
    *
    * @param name name
    */
-  void SetName(std::string_view name);
+  void SetName(std::string_view name) override;
 
   /**
    * Gets the name of this Command.

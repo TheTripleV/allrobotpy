@@ -2,8 +2,8 @@ import hal
 import wpilib
 import logging
 import threading
+import time
 
-from wpilib import SmartDashboard
 from .report_error import reportError, reportErrorInternal
 
 
@@ -26,6 +26,7 @@ class RobotStarter:
         self.suppressExitWarning = False
 
     def run(self, robot_cls: wpilib.RobotBase) -> bool:
+        retval = False
         if hal.hasMain():
             rval = [False]
 
@@ -56,9 +57,18 @@ class RobotStarter:
             th.join(1)
             if th.is_alive():
                 self.logger.warn("robot thread didn't die, crash may occur next!")
-            return rval[0]
+            retval = rval[0]
         else:
-            return self.start(robot_cls)
+            retval = self.start(robot_cls)
+
+        from wpilib import RobotBase
+
+        if RobotBase.isSimulation():
+            import wpilib.simulation
+
+            wpilib.simulation._simulation._resetMotorSafety()
+
+        return retval
 
     def start(self, robot_cls: wpilib.RobotBase) -> bool:
         try:
@@ -67,14 +77,11 @@ class RobotStarter:
             reportErrorInternal(
                 "The robot program quit unexpectedly. This is usually due to a code error.\n"
                 "The above stacktrace can help determine where the error occurred.\n",
+                True,
             )
             return False
 
     def _start(self, robot_cls: wpilib.RobotBase) -> bool:
-
-        import hal
-        import wpilib
-
         hal.report(
             hal.tResourceType.kResourceType_Language,
             hal.tInstances.kLanguage_Python,
@@ -91,18 +98,36 @@ class RobotStarter:
 
         # hack: initialize networktables before creating the robot
         #       class, otherwise our logger doesn't get created
-        from _pyntcore import NetworkTables
+        import ntcore
 
-        NetworkTables.setNetworkIdentity("Robot")
+        inst = ntcore.NetworkTableInstance.getDefault()
+
+        # subscribe to "" to force persistent values to progagate to local
+        msub = ntcore.MultiSubscriber(inst, [""])
+
         if not isSimulation:
-            NetworkTables.startServer("/home/lvuser/networktables.ini")
+            inst.startServer("/home/lvuser/networktables.ini")
         else:
-            NetworkTables.startServer()
+            inst.startServer()
 
-        SmartDashboard.init()
+        # wait for the NT server to actually start
+        for i in range(100):
+            if (
+                inst.getNetworkMode()
+                & ntcore.NetworkTableInstance.NetworkMode.kNetModeStarting
+            ) == 0:
+                break
+            # real sleep since we're waiting for the server, not simulated sleep
+            time.sleep(0.010)
+        else:
+            reportErrorInternal(
+                "timed out while waiting for NT server to start", isWarning=True
+            )
 
-        # Call DriverStation.inDisabled() to kick off DS thread
-        wpilib.DriverStation.inDisabled(True)
+        wpilib.SmartDashboard.init()
+
+        # Call DriverStation.refreshData() to kick things off
+        wpilib.DriverStation.refreshData()
 
         try:
             self.robot = robot_cls()
@@ -122,8 +147,15 @@ class RobotStarter:
 
         if not isSimulation:
             try:
+                from robotpy.version import __version__ as robotpy_version
+
+                version_string = f"RobotPy {robotpy_version}"
+            except ImportError:
+                version_string = f"robotpy-wpilib {wpilib.__version__}"
+
+            try:
                 with open("/tmp/frc_versions/FRC_Lib_Version.ini", "w") as fp:
-                    fp.write("RobotPy %s" % wpilib.__version__)
+                    fp.write(version_string)
             except:
                 reportErrorInternal("Could not write FRC version file to disk")
 

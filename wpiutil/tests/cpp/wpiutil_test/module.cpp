@@ -6,6 +6,13 @@
 #include <wpi_smallset_type_caster.h>
 #include <wpi_smallvector_type_caster.h>
 #include <wpi_smallvectorimpl_type_caster.h>
+#include <wpi_string_map_caster.h>
+#include <wpi_json_type_caster.h>
+
+#include <limits>
+#include <functional>
+
+#include <pybind11/functional.h>
 
 /*
 array tests
@@ -21,36 +28,41 @@ wpi::array<int, 1> load_array_int1(wpi::array<int, 1> data) {
 /*
 span Tests
 */
-wpi::span<const int> load_span_int(wpi::span<const int> ref) {
+std::span<const int> load_span_int(std::span<const int> ref) {
     return ref;
 }
 
-wpi::span<const bool> load_span_bool(wpi::span<const bool> ref) {
+std::span<const bool> load_span_bool(std::span<const bool> ref) {
     return ref;
 }
 
-wpi::span<std::string> load_span_string(wpi::span<std::string> ref) {
+std::span<std::string> load_span_string(std::span<std::string> ref) {
     return ref;
 }
 
-wpi::span<const std::string> load_span_string_const(wpi::span<const std::string> ref) {
+std::span<const std::string> load_span_string_const(std::span<const std::string> ref) {
     return ref;
 }
 
-wpi::span<std::string_view> load_span_string_view(wpi::span<std::string_view> ref) {
+std::span<std::string_view> load_span_string_view(std::span<std::string_view> ref) {
     return ref;
 }
 
-wpi::span<std::vector<std::string>> load_span_vector(wpi::span<std::vector<std::string>> ref) {
+std::span<std::vector<std::string>> load_span_vector(std::span<std::vector<std::string>> ref) {
     return ref;
 }
 
-wpi::span<int> cast_span() {
+std::span<const double, 3> load_span_fixed_double(std::span<const double, 3> ref) {
+    return ref;
+}
+
+
+std::span<int> cast_span() {
     static std::vector<int> vec{1, 2, 3};
     return vec;
 }
 
-wpi::span<const std::string> make_string_span() {
+std::span<const std::string> make_string_span() {
     static std::vector<std::string> vec{"hi", "there"};
     return vec;
 }
@@ -59,11 +71,11 @@ py::object cast_string_span() {
     return py::cast(make_string_span());
 }
 
-wpi::span<const uint8_t> load_span_bytes(wpi::span<const uint8_t> ref) {
+std::span<const uint8_t> load_span_bytes(std::span<const uint8_t> ref) {
     return ref;
 }
 
-void modify_span_buffer(wpi::span<uint8_t> ref) {
+void modify_span_buffer(std::span<uint8_t> ref) {
     ref[0] = 0x4;
 }
 
@@ -109,7 +121,35 @@ wpi::SmallVectorImpl<int>&  load_smallvecimpl_int(wpi::SmallVectorImpl<int>& ref
     return set;
 }
 
+/*
+StringMap tests
+*/
+wpi::StringMap<int> load_stringmap_int(wpi::StringMap<int> ref) {
+    return ref;
+}
+
+wpi::StringMap<int> cast_stringmap() {
+    static wpi::StringMap<int> m;
+    m["one"] = 1;
+    m["two"] = 2;
+    return m;
+}
+
+/* JSON tests */
+wpi::json cast_json_arg(const wpi::json &j) {
+    return j;
+}
+
+wpi::json cast_json_val(std::function<wpi::json()> fn) {
+    return fn();
+}
+
+void sendable_test(py::module &m);
+
+
 RPYBUILD_PYBIND11_MODULE(m) {
+
+    sendable_test(m);
 
     // array
     m.def("load_array_int", &load_array_int);
@@ -117,6 +157,7 @@ RPYBUILD_PYBIND11_MODULE(m) {
     // span
     m.def("load_span_int", &load_span_int);
     m.def("load_span_bool", &load_span_bool);
+    m.def("load_span_fixed_double", &load_span_fixed_double);
     m.def("load_span_string", &load_span_string);
     m.def("load_span_string_const", &load_span_string_const);
     m.def("load_span_string_view", &load_span_string_view);
@@ -133,4 +174,13 @@ RPYBUILD_PYBIND11_MODULE(m) {
     m.def("cast_smallvec", &cast_smallvec);
     // SmallVectorImpl
     m.def("load_smallvecimpl_int", &load_smallvecimpl_int);
+    // StringMap
+    m.def("load_stringmap_int", &load_stringmap_int);
+    m.def("cast_stringmap", &cast_stringmap);
+    // JSON
+    m.def("cast_json_arg", &cast_json_arg); 
+    m.def("cast_json_val", &cast_json_val);
+    m.attr("max_uint64") = std::numeric_limits<uint64_t>::max();
+    m.attr("max_int64") = std::numeric_limits<int64_t>::max();
+    m.attr("min_int64") = std::numeric_limits<int64_t>::min();
 };

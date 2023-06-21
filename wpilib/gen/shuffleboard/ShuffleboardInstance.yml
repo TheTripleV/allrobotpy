@@ -1,15 +1,21 @@
 ---
 
+extra_includes:
+- networktables/NetworkTableInstance.h
+
 classes:
   ShuffleboardInstance:
-    shared_ptr: false
+    rename: _ShuffleboardInstance
+    base_qualnames:
+      ShuffleboardRoot: frc::ShuffleboardRoot
     methods:
       ShuffleboardInstance:
       GetTab:
+        return_value_policy: reference_internal
       Update:
       EnableActuatorWidgets:
       DisableActuatorWidgets:
       SelectTab:
         overloads:
           int:
-          'wpi::':
+          std::string_view:

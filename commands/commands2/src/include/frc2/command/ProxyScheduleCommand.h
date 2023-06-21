@@ -4,8 +4,11 @@
 
 #pragma once
 
+#include <memory>
+#include <span>
+
 #include <wpi/SmallVector.h>
-#include <wpi/span.h>
+#include <wpi/deprecated.h>
 
 #include "frc2/command/CommandBase.h"
 #include "frc2/command/CommandHelper.h"
@@ -26,14 +29,24 @@ class ProxyScheduleCommand
    * initialized, and ends when they are all no longer scheduled.
    *
    * @param toSchedule the commands to schedule
+   * @deprecated Replace with {@link ProxyCommand},
+   * composing multiple of them in a {@link ParallelRaceGroup} if needed.
    */
-  explicit ProxyScheduleCommand(wpi::span<std::shared_ptr<Command>> toSchedule);
+  WPI_DEPRECATED("Replace with ProxyCommand")
+  explicit ProxyScheduleCommand(std::span<std::shared_ptr<Command>> toSchedule);
 
+  /**
+   * Creates a new ProxyScheduleCommand that schedules the given command when
+   * initialized, and ends when it is no longer scheduled.
+   *
+   * <p>Note that this constructor passes ownership of the given command to the
+   * returned ProxyScheduleCommand.
+   *
+   * @param toSchedule the command to schedule
+   */
   explicit ProxyScheduleCommand(std::shared_ptr<Command> toSchedule);
 
   ProxyScheduleCommand(ProxyScheduleCommand&& other) = default;
-
-  ProxyScheduleCommand(const ProxyScheduleCommand& other) = default;
 
   void Initialize() override;
 
@@ -45,6 +58,7 @@ class ProxyScheduleCommand
 
  private:
   wpi::SmallVector<std::shared_ptr<Command>, 4> m_toSchedule;
+  // std::unique_ptr<Command> m_owning;
   bool m_finished{false};
 };
 }  // namespace frc2

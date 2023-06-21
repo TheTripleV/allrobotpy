@@ -21,7 +21,11 @@ The library is designed to:
 .. toctree::
 
   wpilib
+  wpilib.cameraserver
+  wpilib.counter
+  wpilib.deployinfo
   wpilib.drive
+  wpilib.event
   wpilib.interfaces
+  wpilib.shuffleboard
   wpilib.simulation
-  

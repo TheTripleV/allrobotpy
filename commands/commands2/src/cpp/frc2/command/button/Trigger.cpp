@@ -8,23 +8,218 @@
 
 #include "frc2/command/InstantCommand.h"
 
+using namespace frc;
 using namespace frc2;
 
 Trigger::Trigger(const Trigger& other) = default;
 
-Trigger Trigger::WhenActive(std::shared_ptr<Command> command, bool interruptible) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command, interruptible]() mutable {
-        bool pressed = m_isActive();
+Trigger Trigger::OnTrue(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
 
-        if (!pressedLast && pressed) {
-          Command_Schedule(command, interruptible);
+        if (!previous && current) {
+          Command_Schedule(command);
         }
 
-        pressedLast = pressed;
+        previous = current;
       });
-
   return *this;
+}
+
+/*
+Trigger Trigger::OnTrue(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (!previous && current) {
+      command.Schedule();
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+Trigger Trigger::OnFalse(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
+
+        if (previous && !current) {
+          Command_Schedule(command);
+        }
+
+        previous = current;
+      });
+  return *this;
+}
+
+/*
+Trigger Trigger::OnFalse(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (previous && !current) {
+      command.Schedule();
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+Trigger Trigger::WhileTrue(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
+
+        if (!previous && current) {
+          Command_Schedule(command);
+        } else if (previous && !current) {
+          command->Cancel();
+        }
+
+        previous = current;
+      });
+  return *this;
+}
+
+/*
+Trigger Trigger::WhileTrue(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (!previous && current) {
+      command.Schedule();
+    } else if (previous && !current) {
+      command.Cancel();
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+Trigger Trigger::WhileFalse(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
+
+        if (previous && !current) {
+          Command_Schedule(command);
+        } else if (!previous && current) {
+          command->Cancel();
+        }
+
+        previous = current;
+      });
+  return *this;
+}
+
+/*
+Trigger Trigger::WhileFalse(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (!previous && current) {
+      command.Schedule();
+    } else if (previous && !current) {
+      command.Cancel();
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+Trigger Trigger::ToggleOnTrue(std::shared_ptr<Command> command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = command]() mutable {
+    bool current = condition();
+
+    if (!previous && current) {
+      if (command->IsScheduled()) {
+        command->Cancel();
+      } else {
+        Command_Schedule(command);
+      }
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+
+/*
+Trigger Trigger::ToggleOnTrue(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (!previous && current) {
+      if (command.IsScheduled()) {
+        command.Cancel();
+      } else {
+        command.Schedule();
+      }
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+Trigger Trigger::ToggleOnFalse(std::shared_ptr<Command> command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = command]() mutable {
+    bool current = condition();
+
+    if (previous && !current) {
+      if (command->IsScheduled()) {
+        command->Cancel();
+      } else {
+        Command_Schedule(command);
+      }
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+
+/*
+Trigger Trigger::ToggleOnFalse(CommandPtr&& command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
+
+    if (previous && !current) {
+      if (command.IsScheduled()) {
+        command.Cancel();
+      } else {
+        command.Schedule();
+      }
+    }
+
+    previous = current;
+  });
+  return *this;
+}
+*/
+
+WPI_IGNORE_DEPRECATED
+Trigger Trigger::WhenActive(std::shared_ptr<Command> command) {
+  return OnTrue(command);
 }
 
 // Trigger Trigger::WhenActive(std::function<void()> toRun,
@@ -34,23 +229,23 @@ Trigger Trigger::WhenActive(std::shared_ptr<Command> command, bool interruptible
 // }
 
 Trigger Trigger::WhenActive(std::function<void()> toRun,
-                            wpi::span<std::shared_ptr<Subsystem>> requirements) {
-  return WhenActive(InstantCommand(std::move(toRun), requirements));
+                            std::span<std::shared_ptr<Subsystem>> requirements) {
+  return WhenActive(std::make_shared<InstantCommand>(std::move(toRun), requirements));
 }
 
-Trigger Trigger::WhileActiveContinous(std::shared_ptr<Command> command, bool interruptible) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command, interruptible]() mutable {
-        bool pressed = m_isActive();
+Trigger Trigger::WhileActiveContinous(std::shared_ptr<Command> command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
 
-        if (pressed) {
-          Command_Schedule(command, interruptible);
-        } else if (pressedLast && !pressed) {
-          command->Cancel();
-        }
+    if (current) {
+      Command_Schedule(command);
+    } else if (previous && !current) {
+      command->Cancel();
+    }
 
-        pressedLast = pressed;
-      });
+    previous = current;
+  });
   return *this;
 }
 
@@ -62,36 +257,36 @@ Trigger Trigger::WhileActiveContinous(std::shared_ptr<Command> command, bool int
 // }
 
 Trigger Trigger::WhileActiveContinous(
-    std::function<void()> toRun, wpi::span<std::shared_ptr<Subsystem>> requirements) {
-  return WhileActiveContinous(InstantCommand(std::move(toRun), requirements));
+    std::function<void()> toRun, std::span<std::shared_ptr<Subsystem>> requirements) {
+  return WhileActiveContinous(std::make_shared<InstantCommand>(std::move(toRun), requirements));
 }
 
-Trigger Trigger::WhileActiveOnce(std::shared_ptr<Command> command, bool interruptible) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command, interruptible]() mutable {
-        bool pressed = m_isActive();
+Trigger Trigger::WhileActiveOnce(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
 
-        if (!pressedLast && pressed) {
-          Command_Schedule(command, interruptible);
-        } else if (pressedLast && !pressed) {
+        if (!previous && current) {
+          Command_Schedule(command);
+        } else if (previous && !current) {
           command->Cancel();
         }
 
-        pressedLast = pressed;
+        previous = current;
       });
   return *this;
 }
 
-Trigger Trigger::WhenInactive(std::shared_ptr<Command> command, bool interruptible) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command, interruptible]() mutable {
-        bool pressed = m_isActive();
+Trigger Trigger::WhenInactive(std::shared_ptr<Command> command) {
+  m_loop->Bind(
+      [condition = m_condition, previous = m_condition(), command]() mutable {
+        bool current = condition();
 
-        if (pressedLast && !pressed) {
-          Command_Schedule(command, interruptible);
+        if (previous && !current) {
+          Command_Schedule(command);
         }
 
-        pressedLast = pressed;
+        previous = current;
       });
   return *this;
 }
@@ -103,46 +298,47 @@ Trigger Trigger::WhenInactive(std::shared_ptr<Command> command, bool interruptib
 // }
 
 Trigger Trigger::WhenInactive(std::function<void()> toRun,
-                              wpi::span<std::shared_ptr<Subsystem>> requirements) {
-  return WhenInactive(InstantCommand(std::move(toRun), requirements));
+                              std::span<std::shared_ptr<Subsystem>> requirements) {
+  return WhenInactive(std::make_shared<InstantCommand>(std::move(toRun), requirements));
 }
 
-Trigger Trigger::ToggleWhenActive(std::shared_ptr<Command> command, bool interruptible) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command, interruptible]() mutable {
-        bool pressed = m_isActive();
+Trigger Trigger::ToggleWhenActive(std::shared_ptr<Command> command) {
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = command]() mutable {
+    bool current = condition();
 
-        if (!pressedLast && pressed) {
-          if (command->IsScheduled()) {
-            command->Cancel();
-          } else {
-            Command_Schedule(command, interruptible);
-          }
-        }
+    if (!previous && current) {
+      if (command->IsScheduled()) {
+        command->Cancel();
+      } else {
+        Command_Schedule(command);
+      }
+    }
 
-        pressedLast = pressed;
-      });
+    previous = current;
+  });
   return *this;
 }
 
 Trigger Trigger::CancelWhenActive(std::shared_ptr<Command> command) {
-  CommandScheduler::GetInstance().AddButton(
-      [pressedLast = m_isActive(), *this, command]() mutable {
-        bool pressed = m_isActive();
+  m_loop->Bind([condition = m_condition, previous = m_condition(),
+                command = std::move(command)]() mutable {
+    bool current = condition();
 
-        if (!pressedLast && pressed) {
-          command->Cancel();
-        }
+    if (!previous && current) {
+      command->Cancel();
+    }
 
-        pressedLast = pressed;
-      });
+    previous = current;
+  });
   return *this;
 }
+WPI_UNIGNORE_DEPRECATED
 
 Trigger Trigger::Debounce(units::second_t debounceTime,
                           frc::Debouncer::DebounceType type) {
-  return Trigger(
-      [debouncer = frc::Debouncer(debounceTime, type), *this]() mutable {
-        return debouncer.Calculate(m_isActive());
-      });
+  return Trigger(m_loop, [debouncer = frc::Debouncer(debounceTime, type),
+                          condition = m_condition]() mutable {
+    return debouncer.Calculate(condition());
+  });
 }

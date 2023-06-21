@@ -33,7 +33,6 @@ def test_entry_persistence(nt):
     e = nt.getEntry("/k2")
 
     for _ in range(2):
-
         assert not e.isPersistent()
         # persistent flag cannot be set unless the entry has a value
         e.setString("value")
@@ -45,3 +44,9 @@ def test_entry_persistence(nt):
         assert not e.isPersistent()
 
         e.delete()
+
+
+def test_entry_publish_empty_double_array(nt):
+    topic = nt.getDoubleArrayTopic("/Topic")
+    pub = topic.publish()
+    pub.set([])

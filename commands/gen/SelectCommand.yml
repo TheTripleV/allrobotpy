@@ -3,6 +3,7 @@
 extra_includes:
 - frc2/command/Command.h
 - frc2/command/Subsystem.h
+- src/SelectCommandKey.h
 
 functions:
   Initialize:
@@ -24,9 +25,17 @@ classes:
       End:
       IsFinished:
       RunsWhenDisabled:
+      GetInterruptionBehavior:
+      InitSendable:
+        virtual_xform: |
+          [&](py::function fn) {
+            auto builderHandle = py::cast(builder, py::return_value_policy::reference);
+            fn(builderHandle);
+          }
+
 
 templates:
   SelectCommand:
     qualname: frc2::SelectCommand
     params:
-      - py::object
+      - SelectCommandKey

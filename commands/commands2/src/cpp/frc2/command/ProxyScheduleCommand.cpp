@@ -7,12 +7,13 @@
 using namespace frc2;
 
 ProxyScheduleCommand::ProxyScheduleCommand(
-    wpi::span<std::shared_ptr<Command>> toSchedule) {
+    std::span<std::shared_ptr<Command>> toSchedule) {
   SetInsert(m_toSchedule, toSchedule);
 }
 
 ProxyScheduleCommand::ProxyScheduleCommand(std::shared_ptr<Command> toSchedule) {
-  SetInsert(m_toSchedule, {&toSchedule, 1});
+  std::shared_ptr<Command> v[] = {toSchedule};
+  SetInsert(m_toSchedule, {v, 1});
 }
 
 void ProxyScheduleCommand::Initialize() {

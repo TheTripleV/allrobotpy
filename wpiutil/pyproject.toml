@@ -1,5 +1,16 @@
+[tool.robotpy-build.metadata]
+name = "robotpy-wpiutil"
+description = "Binary wrapper for FRC WPIUtil library"
+author = "RobotPy Development Team"
+author_email = "robotpy@googlegroups.com"
+url = "https://github.com/robotpy/robotpy-wpiutil"
+license = "BSD-3-Clause"
+install_requires = []
+
 [build-system]
-requires = ["robotpy-build<2023.0.0,>=2022.2.2"]
+requires = [
+    "robotpy-build<2024.0.0,>=2023.1.1",
+]
 
 [tool.robotpy-build]
 base_package = "wpiutil"
@@ -8,6 +19,7 @@ base_package = "wpiutil"
 name = "wpiutil"
 sources = [
     "wpiutil/src/main.cpp",
+    "wpiutil/src/safethread_gil.cpp",
     "wpiutil/src/stacktracehook.cpp"
 ]
 extra_includes = ["wpiutil/src/type_casters"]
@@ -18,7 +30,8 @@ generation_data = "gen"
 artifact_id = "wpiutil-cpp"
 group_id = "edu.wpi.first.wpiutil"
 repo_url = "https://frcmaven.wpi.edu/artifactory/release"
-version = "2022.4.1"
+# repo_url = "https://frcmaven.wpi.edu/artifactory/development"
+version = "2023.4.3"
 
 libs = ["wpiutil"]
 
@@ -26,8 +39,8 @@ libs = ["wpiutil"]
 # wpi
 DataLog = "wpi/DataLog.h"
 DataLogReader = "wpi/DataLogReader.h"
-PortForwarder = "wpi/PortForwarder.h"
 StackTrace = "wpi/StackTrace.h"
+Synchronization = "wpi/Synchronization.h"
 
 # wpi/sendable
 Sendable = "wpi/sendable/Sendable.h"
@@ -40,8 +53,12 @@ header = "wpi_array_type_caster.h"
 types = ["wpi::array"]
 
 [[tool.robotpy-build.wrappers."wpiutil".type_casters]]
+header = "wpi_json_type_caster.h"
+types = ["wpi::json"]
+
+[[tool.robotpy-build.wrappers."wpiutil".type_casters]]
 header = "wpi_span_type_caster.h"
-types = ["wpi::span"]
+types = ["std::span"]
 
 [[tool.robotpy-build.wrappers."wpiutil".type_casters]]
 header = "wpi_smallset_type_caster.h"
@@ -55,11 +72,6 @@ types = ["wpi::SmallVector"]
 header = "wpi_smallvectorimpl_type_caster.h"
 types = ["wpi::SmallVectorImpl"]
 
-[tool.robotpy-build.metadata]
-name = "robotpy-wpiutil"
-description = "Binary wrapper for FRC WPIUtil library"
-author = "RobotPy Development Team"
-author_email = "robotpy@googlegroups.com"
-url = "https://github.com/robotpy/robotpy-wpiutil"
-license = "BSD-3-Clause"
-install_requires = []
+[[tool.robotpy-build.wrappers."wpiutil".type_casters]]
+header = "wpi_string_map_caster.h"
+types = ["wpi::StringMap"]

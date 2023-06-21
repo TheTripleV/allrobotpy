@@ -4,6 +4,9 @@
 
 #include "frc2/command/Subsystem.h"
 
+#include "frc2/command/CommandPtr.h"
+#include "frc2/command/Commands.h"
+
 using namespace frc2;
 Subsystem::~Subsystem() {
   CommandScheduler::GetInstance().UnregisterSubsystem(this);
@@ -12,6 +15,15 @@ Subsystem::~Subsystem() {
 void Subsystem::Periodic() {}
 
 void Subsystem::SimulationPeriodic() {}
+
+void Subsystem::SetDefaultCommand(std::shared_ptr<Command> defaultCommand) {
+  CommandScheduler::GetInstance().SetDefaultCommand(this,
+                                                    defaultCommand);
+}
+
+void Subsystem::RemoveDefaultCommand() {
+  CommandScheduler::GetInstance().RemoveDefaultCommand(this);
+}
 
 std::shared_ptr<Command> Subsystem::GetDefaultCommand() {
   return CommandScheduler::GetInstance().GetDefaultCommand(this);
@@ -24,3 +36,23 @@ std::shared_ptr<Command> Subsystem::GetCurrentCommand() {
 void Subsystem::Register() {
   return CommandScheduler::GetInstance().RegisterSubsystem(this);
 }
+
+/*
+std::shared_ptr<Command> Subsystem::RunOnce(std::function<void()> action) {
+  return cmd::RunOnce(std::move(action), {this});
+}
+
+std::shared_ptr<Command> Subsystem::Run(std::function<void()> action) {
+  return cmd::Run(std::move(action), {this});
+}
+
+std::shared_ptr<Command> Subsystem::StartEnd(std::function<void()> start,
+                               std::function<void()> end) {
+  return cmd::StartEnd(std::move(start), std::move(end), {this});
+}
+
+std::shared_ptr<Command> Subsystem::RunEnd(std::function<void()> run,
+                             std::function<void()> end) {
+  return cmd::RunEnd(std::move(run), std::move(end), {this});
+}
+*/

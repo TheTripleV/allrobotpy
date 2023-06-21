@@ -4,7 +4,7 @@
 
 #include "frc2/command/SequentialCommandGroup.h"
 
-#include "frc2/command/InstantCommand.h"
+#include <wpi/sendable/SendableBuilder.h>
 
 using namespace frc2;
 
@@ -55,54 +55,35 @@ bool SequentialCommandGroup::RunsWhenDisabled() const {
   return m_runWhenDisabled;
 }
 
+Command::InterruptionBehavior SequentialCommandGroup::GetInterruptionBehavior()
+    const {
+  return m_interruptBehavior;
+}
+
 void SequentialCommandGroup::AddCommands(
     std::vector<std::shared_ptr<Command>>&& commands) {
-  if (!RequireUngrouped(commands)) {
-    return;
-  }
+  CommandScheduler::GetInstance().RequireUngrouped(commands);
 
   if (m_currentCommandIndex != invalid_index) {
-    throw FRC_MakeError(frc::err::CommandIllegalUse, "{}",
+    throw FRC_MakeError(frc::err::CommandIllegalUse,
                         "Commands cannot be added to a CommandGroup "
                         "while the group is running");
   }
 
   for (auto&& command : commands) {
-    command->SetGrouped(true);
+    command->SetComposed(true);
     AddRequirements(command->GetRequirements());
     m_runWhenDisabled &= command->RunsWhenDisabled();
+    if (command->GetInterruptionBehavior() ==
+        Command::InterruptionBehavior::kCancelSelf) {
+      m_interruptBehavior = Command::InterruptionBehavior::kCancelSelf;
+    }
     m_commands.emplace_back(std::move(command));
   }
 }
 
-std::shared_ptr<SequentialCommandGroup> frc2::SequentialCommandGroup_BeforeStarting(
-  std::shared_ptr<SequentialCommandGroup> self,
-    std::function<void()> toRun, wpi::span<std::shared_ptr<Subsystem>> requirements) {
-  // store all the commands
-  std::vector<std::shared_ptr<Command>> tmp;
-  tmp.emplace_back(
-      std::make_shared<InstantCommand>(std::move(toRun), requirements));
-  for (auto&& command : self->m_commands) {
-    command->SetGrouped(false);
-    tmp.emplace_back(std::move(command));
-  }
-
-  // reset current state
-  self->m_commands.clear();
-  self->m_requirements.clear();
-  self->m_runWhenDisabled = true;
-
-  // add the commands back
-  self->AddCommands(std::move(tmp));
-  return self;
-}
-
-std::shared_ptr<SequentialCommandGroup> frc2::SequentialCommandGroup_AndThen(
-    std::shared_ptr<SequentialCommandGroup> self,
-    std::function<void()> toRun, wpi::span<std::shared_ptr<Subsystem>> requirements) {
-  std::vector<std::shared_ptr<Command>> tmp;
-  tmp.emplace_back(
-      std::make_shared<InstantCommand>(std::move(toRun), requirements));
-  self->AddCommands(std::move(tmp));
-  return self;
+void SequentialCommandGroup::InitSendable(wpi::SendableBuilder& builder) {
+  CommandBase::InitSendable(builder);
+  builder.AddIntegerProperty(
+      "index", [this] { return m_currentCommandIndex; }, nullptr);
 }

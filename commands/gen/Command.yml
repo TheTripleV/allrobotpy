@@ -21,21 +21,17 @@ functions:
   RequirementsDisjoint:
   Command_Schedule:
     ignore: true
-  Command_Schedule:
-    overloads:
-      std::shared_ptr<Command>:
-        ignore: true
-      std::shared_ptr<Command>, bool:
-        ignore: true
 classes:
   Command:
     force_type_casters:
-    - wpi::span
+    - std::span
     - std::function
     - units::second_t
     shared_ptr: true
     attributes:
-      m_isGrouped:
+      m_isComposed:
+    enums:
+      InterruptionBehavior:
     methods:
       Command:
       Initialize:
@@ -44,19 +40,18 @@ classes:
       IsFinished:
       GetRequirements:
       Schedule:
-        overloads:
-          bool:
-            cpp_code: |
-              [](std::shared_ptr<Command> self, bool interruptable) {
-                Command_Schedule(self, interruptable);
-              }
-          "":
-            cpp_code: |
-              [](std::shared_ptr<Command> self) { Command_Schedule(self, true); }
+        cpp_code: |
+          [](std::shared_ptr<Command> self) { Command_Schedule(self); }
       Cancel:
       IsScheduled:
       HasRequirement:
+      IsComposed:
+      SetComposed:
       IsGrouped:
       SetGrouped:
       RunsWhenDisabled:
+      GetInterruptionBehavior:
       GetName:
+      SetName:
+      ToPtr:
+        ignore: true

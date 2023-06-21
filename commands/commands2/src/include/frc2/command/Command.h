@@ -7,12 +7,13 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <span>
 #include <string>
 
 #include <units/time.h>
 #include <wpi/Demangle.h>
 #include <wpi/SmallSet.h>
-#include <wpi/span.h>
+#include <wpi/deprecated.h>
 
 #include "frc2/command/Subsystem.h"
 
@@ -23,12 +24,7 @@ std::string GetTypeName(const T& type) {
   return wpi::Demangle(typeid(type).name());
 }
 
-class ParallelCommandGroup;
-class ParallelRaceGroup;
-class ParallelDeadlineGroup;
-class SequentialCommandGroup;
 class PerpetualCommand;
-class ProxyScheduleCommand;
 
 /**
  * A state machine representing a complete action to be performed by the robot.
@@ -36,8 +32,9 @@ class ProxyScheduleCommand;
  * CommandGroups to allow users to build complicated multi-step actions without
  * the need to roll the state machine logic themselves.
  *
- * <p>Commands are run synchronously from the main robot loop; no multithreading
- * is used, unless specified explicitly from the command implementation.
+ * <p>Commands are run synchronously from the main robot loop; no
+ * multithreading is used, unless specified explicitly from the command
+ * implementation.
  *
  * @see CommandScheduler
  */
@@ -80,19 +77,37 @@ class Command {
   virtual bool IsFinished() { return false; }
 
   /**
-   * Specifies the set of subsystems used by this command.  Two commands cannot
-   * use the same subsystem at the same time.  If the command is scheduled as
-   * interruptible and another command is scheduled that shares a requirement,
-   * the command will be interrupted.  Else, the command will not be scheduled.
-   * If no subsystems are required, return an empty set.
+   * Specifies the set of subsystems used by this command. Two commands cannot
+   * use the same subsystem at the same time. If another command is scheduled
+   * that shares a requirement, GetInterruptionBehavior() will be checked and
+   * followed. If no subsystems are required, return an empty set.
    *
    * <p>Note: it is recommended that user implementations contain the
    * requirements as a field, and return that field here, rather than allocating
    * a new set every time this is called.
    *
    * @return the set of subsystems that are required
+   * @see InterruptionBehavior
    */
   virtual wpi::SmallSet<std::shared_ptr<Subsystem>, 4> GetRequirements() const = 0;
+
+  /**
+   * An enum describing the command's behavior when another command with a
+   * shared requirement is scheduled.
+   */
+  enum class InterruptionBehavior {
+    /**
+     * This command ends, End(true) is called, and the incoming command is
+     * scheduled normally.
+     *
+     * <p>This is the default behavior.
+     */
+    kCancelSelf,
+    /** This command continues, and the incoming command is not scheduled. */
+    kCancelIncoming
+  };
+
+  friend class CommandPtr;
 
   /**
    * Decorates this command with a timeout.  If the specified timeout is
@@ -104,7 +119,7 @@ class Command {
    * @return the command with the timeout added
    */
    /*
-  virtual ParallelRaceGroup WithTimeout(units::second_t duration) &&;
+  [[nodiscard]] CommandPtr WithTimeout(units::second_t duration) &&;
   */
 
   /**
@@ -117,7 +132,7 @@ class Command {
    * @return the command with the interrupt condition added
    */
    /*
-  virtual ParallelRaceGroup Until(std::function<bool()> condition) &&;
+  [[nodiscard]] CommandPtr Until(std::function<bool()> condition) &&;
   */
 
   /**
@@ -128,9 +143,11 @@ class Command {
    *
    * @param condition the interrupt condition
    * @return the command with the interrupt condition added
+   * @deprecated Replace with Until()
    */
    /*
-  virtual ParallelRaceGroup WithInterrupt(std::function<bool()> condition) &&;
+  WPI_DEPRECATED("Replace with Until()")
+  [[nodiscard]] CommandPtr WithInterrupt(std::function<bool()> condition) &&;
   */
 
   /**
@@ -141,7 +158,7 @@ class Command {
    * @return the decorated command
    */
    /*
-  virtual SequentialCommandGroup BeforeStarting(
+  [[nodiscard]] CommandPtr BeforeStarting(
       std::function<void()> toRun,
       std::initializer_list<Subsystem*> requirements) &&;
       */
@@ -154,9 +171,9 @@ class Command {
    * @return the decorated command
    */
    /*
-  virtual SequentialCommandGroup BeforeStarting(
+  [[nodiscard]] CommandPtr BeforeStarting(
       std::function<void()> toRun,
-      wpi::span<Subsystem* const> requirements = {}) &&;
+      std::span<Subsystem* const> requirements = {}) &&;
       */
 
   /**
@@ -167,7 +184,7 @@ class Command {
    * @return the decorated command
    */
    /*
-  virtual SequentialCommandGroup AndThen(
+  [[nodiscard]] CommandPtr AndThen(
       std::function<void()> toRun,
       std::initializer_list<Subsystem*> requirements) &&;
       */
@@ -180,9 +197,9 @@ class Command {
    * @return the decorated command
    */
    /*
-  virtual SequentialCommandGroup AndThen(
+  [[nodiscard]] CommandPtr AndThen(
       std::function<void()> toRun,
-      wpi::span<Subsystem* const> requirements = {}) &&;
+      std::span<Subsystem* const> requirements = {}) &&;
       */
 
   /**
@@ -190,46 +207,119 @@ class Command {
    * conditions.  The decorated command can still be interrupted or canceled.
    *
    * @return the decorated command
+   * @deprecated PerpetualCommand violates the assumption that execute() doesn't
+get called after isFinished() returns true -- an assumption that should be
+valid. This was unsafe/undefined behavior from the start, and RepeatCommand
+provides an easy way to achieve similar end results with slightly different (and
+safe) semantics.
    */
    /*
-  virtual PerpetualCommand Perpetually() &&;
+  WPI_DEPRECATED(
+      "PerpetualCommand violates the assumption that execute() doesn't get "
+      "called after isFinished() returns true -- an assumption that should be "
+      "valid."
+      "This was unsafe/undefined behavior from the start, and RepeatCommand "
+      "provides an easy way to achieve similar end results with slightly "
+      "different (and safe) semantics.")
+  PerpetualCommand Perpetually() &&;
   */
 
   /**
    * Decorates this command to run "by proxy" by wrapping it in a
-   * ProxyScheduleCommand. This is useful for "forking off" from command groups
+   * ProxyCommand. This is useful for "forking off" from command groups
    * when the user does not wish to extend the command's requirements to the
    * entire command group.
+   *
+   * <p>This overload transfers command ownership to the returned CommandPtr.
    *
    * @return the decorated command
    */
    /*
-  virtual ProxyScheduleCommand AsProxy();
+  [[nodiscard]] CommandPtr AsProxy() &&;
+  */
+
+  /**
+   * Decorates this command to only run if this condition is not met. If the
+   * command is already running and the condition changes to true, the command
+   * will not stop running. The requirements of this command will be kept for
+   * the new conditional command.
+   *
+   * @param condition the condition that will prevent the command from running
+   * @return the decorated command
+   */
+   /*
+  [[nodiscard]] CommandPtr Unless(std::function<bool()> condition) &&;
+  */
+
+  /**
+   * Decorates this command to run or stop when disabled.
+   *
+   * @param doesRunWhenDisabled true to run when disabled.
+   * @return the decorated command
+   */
+   /*
+  [[nodiscard]] CommandPtr IgnoringDisable(bool doesRunWhenDisabled) &&;
+  */
+
+  /**
+   * Decorates this command to run or stop when disabled.
+   *
+   * @param interruptBehavior true to run when disabled.
+   * @return the decorated command
+   */
+   /*
+  [[nodiscard]] CommandPtr WithInterruptBehavior(
+      Command::InterruptionBehavior interruptBehavior) &&;
+      */
+
+  /**
+   * Decorates this command with a lambda to call on interrupt or end, following
+   * the command's inherent Command::End(bool) method.
+   *
+   * @param end a lambda accepting a boolean parameter specifying whether the
+   * command was interrupted.
+   * @return the decorated command
+   */
+   /*
+  [[nodiscard]] CommandPtr FinallyDo(std::function<void(bool)> end) &&;
+  */
+
+  /**
+   * Decorates this command with a lambda to call on interrupt, following the
+   * command's inherent Command::End(bool) method.
+   *
+   * @param handler a lambda to run when the command is interrupted
+   * @return the decorated command
+   */
+   /*
+  [[nodiscard]] CommandPtr HandleInterrupt(std::function<void()> handler) &&;
+  */
+
+  /**
+   * Decorates this Command with a name.
+   *
+   * @param name name
+   * @return the decorated Command
+   */
+   /*
+  [[nodiscard]] CommandPtr WithName(std::string_view name) &&;
   */
 
   /**
    * Schedules this command.
-   *
-   * @param interruptible whether this command can be interrupted by another
-   * command that shares one of its requirements
-   */
-  void Schedule(bool interruptible);
-
-  /**
-   * Schedules this command, defaulting to interruptible.
    */
   void Schedule();
 
   /**
-   * Cancels this command.  Will call the command's interrupted() method.
-   * Commands will be canceled even if they are not marked as interruptible.
+   * Cancels this command. Will call End(true). Commands will be canceled
+   * regardless of interruption behavior.
    */
   void Cancel();
 
   /**
-   * Whether or not the command is currently scheduled.  Note that this does not
-   * detect whether the command is being run by a CommandGroup, only whether it
-   * is directly being run by the scheduler.
+   * Whether or not the command is currently scheduled. Note that this does not
+   * detect whether the command is in a composition, only whether it is directly
+   * being run by the scheduler.
    *
    * @return Whether the command is scheduled.
    */
@@ -243,19 +333,38 @@ class Command {
    * @param requirement the subsystem to inquire about
    * @return whether the subsystem is required
    */
-  bool HasRequirement(std::shared_ptr<Subsystem> requirement) const;
+  bool HasRequirement(Subsystem* requirement) const;
 
   /**
    * Whether the command is currently grouped in a command group.  Used as extra
    * insurance to prevent accidental independent use of grouped commands.
    */
+  bool IsComposed() const;
+
+  /**
+   * Sets whether the command is currently composed in a command composition.
+   * Can be used to "reclaim" a command if a composition is no longer going to
+   * use it.  NOT ADVISED!
+   */
+  void SetComposed(bool isComposed);
+
+  /**
+   * Whether the command is currently grouped in a command group.  Used as extra
+   * insurance to prevent accidental independent use of grouped commands.
+   *
+   * @deprecated Moved to IsComposed()
+   */
+  WPI_DEPRECATED("Moved to IsComposed()")
   bool IsGrouped() const;
 
   /**
    * Sets whether the command is currently grouped in a command group.  Can be
    * used to "reclaim" a command if a group is no longer going to use it.  NOT
    * ADVISED!
+   *
+   * @deprecated Moved to SetComposed()
    */
+  WPI_DEPRECATED("Moved to SetComposed()")
   void SetGrouped(bool grouped);
 
   /**
@@ -266,7 +375,38 @@ class Command {
    */
   virtual bool RunsWhenDisabled() const { return false; }
 
+  /**
+   * How the command behaves when another command with a shared requirement is
+   * scheduled.
+   *
+   * @return a variant of InterruptionBehavior, defaulting to kCancelSelf.
+   */
+  virtual InterruptionBehavior GetInterruptionBehavior() const {
+    return InterruptionBehavior::kCancelSelf;
+  }
+
+  /**
+   * Gets the name of this Command. Defaults to the simple class name if not
+   * overridden.
+   *
+   * @return The display name of the Command
+   */
   virtual std::string GetName() const;
+
+  /**
+   * Sets the name of this Command. Nullop if not overridden.
+   *
+   * @param name The display name of the Command.
+   */
+  virtual void SetName(std::string_view name);
+
+  /**
+   * Transfers ownership of this command to a unique pointer.  Used for
+   * decorator methods.
+   */
+  /*
+  virtual CommandPtr ToPtr() && = 0;
+  */
 
  protected:
   /**
@@ -275,7 +415,7 @@ class Command {
    */
   // virtual std::shared_ptr<Command> TransferOwnership() && = 0;
 
-  bool m_isGrouped = false;
+  bool m_isComposed = false;
 };
 
 /**
@@ -288,7 +428,6 @@ class Command {
 bool RequirementsDisjoint(Command* first, Command* second);
 
 void Command_Schedule(std::shared_ptr<Command> self);
-void Command_Schedule(std::shared_ptr<Command> self, bool interruptable);
 
 
 }  // namespace frc2
