@@ -32,6 +32,8 @@ from typing import (
 
 from dataclasses import dataclass
 
+import shellingham
+
 #############################################
 root = Path(
     subprocess.run(
@@ -84,8 +86,11 @@ bash = _Shell("bash_with_no_path")
 ps = _Shell("powershell_with_no_path")
 cmd = _Shell("cmd_with_no_path")
 
+try:
+    _shell = shellingham.detect_shell()[1]
+except shellingham.ShellDetectionFailure:
+    _shell = os.getenv("SHELL", "")
 
-_shell = os.getenv("SHELL", "")
 if "pwsh" in _shell:
     default_shell = ps = _Shell(_shell)
 elif "powershell" in _shell:

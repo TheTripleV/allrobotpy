@@ -86,7 +86,7 @@ jobs:
     - name: "install invoke"
       shell: bash
       run: |
-        python -m pip install invoke
+        python -m pip install invoke shellingham
 
     - name: "#invoke"
       shell: bash
