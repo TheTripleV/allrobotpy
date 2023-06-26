@@ -1,4 +1,3 @@
-
 # from invoke.parser import ParserContext
 from invoke.tasks import Task, Call
 from invoke.tasks import task as _task
@@ -18,19 +17,37 @@ import os
 import sys
 import subprocess
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, overload, Union, Literal, Type, List
+from typing import (
+    TYPE_CHECKING,
+    Optional,
+    Dict,
+    Any,
+    Tuple,
+    overload,
+    Union,
+    Literal,
+    Type,
+    List,
+)
 
 from dataclasses import dataclass
 
 #############################################
-root = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip())
+root = Path(
+    subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+    ).stdout.strip()
+)
 """Root of Git Repo"""
 
 #############################################
 import inspect
+
+
 def here() -> Path:
     """Returns the path of the file that called this function"""
     return Path(inspect.stack()[1].filename).parent
+
 
 #############################################
 
@@ -38,8 +55,9 @@ def here() -> Path:
 MODULE_PATH = root / "__init__.py"
 MODULE_NAME = "allrobotpy"
 spec = importlib.util.spec_from_file_location(MODULE_NAME, MODULE_PATH)
-module = importlib.util.module_from_spec(spec) # type: ignore
-sys.modules[spec.name] = module # type: ignore
+module = importlib.util.module_from_spec(spec)  # type: ignore
+sys.modules[spec.name] = module  # type: ignore
+
 
 #############################################
 def boolify(value) -> bool:
@@ -51,12 +69,15 @@ def boolify(value) -> bool:
     except:
         raise ValueError(f"Could not convert {value} to bool")
 
+
 #############################################
 # Detect the current shell and setup shell sentinels
+
 
 @dataclass(frozen=True)
 class _Shell:
     path: str
+
 
 # These 3 need to be unique sentinel objects (after shell detection)
 bash = _Shell("bash_with_no_path")
@@ -64,14 +85,14 @@ ps = _Shell("powershell_with_no_path")
 cmd = _Shell("cmd_with_no_path")
 
 
-_shell = os.getenv('SHELL', '')
-if 'pwsh' in _shell:
+_shell = os.getenv("SHELL", "")
+if "pwsh" in _shell:
     default_shell = ps = _Shell(_shell)
-elif 'powershell' in _shell:
+elif "powershell" in _shell:
     default_shell = ps = _Shell(_shell)
-elif 'bash' in _shell:
+elif "bash" in _shell:
     default_shell = bash = _Shell(_shell)
-elif _shell.endswith('sh'):
+elif _shell.endswith("sh"):
     default_shell = bash = _Shell(_shell)
 elif sys.platform == "win32":
     # If Windows platform
@@ -94,13 +115,18 @@ else:
 
 # class Context(invoke.context.Context):
 old_Context_init = Context.__init__
+
+
 def new_Context_init(self, config: Optional[Config] = None) -> None:
     old_Context_init(self, config)
     self.command_cwds.append(root)
     self.global_state = GlobalState
+
+
 Context.__init__ = new_Context_init
 
 old_Context_run = Context.run
+
 
 def new_Context_run(self, *args, **kwargs):
     if "shell" not in kwargs:
@@ -118,18 +144,14 @@ def new_Context_run(self, *args, **kwargs):
         _cmd = bash
         _ps = bash
 
-    d = {
-        bash: _bash,
-        ps: _ps,
-        cmd: _cmd
-    }
+    d = {bash: _bash, ps: _ps, cmd: _cmd}
 
     def lookup(key):
         v = d[key]
         if v in d:
             return lookup(v)
         return v
-    
+
     command = lookup(default_shell)
 
     kwargs.pop("bash", None)
@@ -141,6 +163,7 @@ def new_Context_run(self, *args, **kwargs):
 
     return old_Context_run(self, command, **kwargs)
 
+
 Context.run = new_Context_run
 
 if TYPE_CHECKING:
@@ -149,65 +172,81 @@ if TYPE_CHECKING:
     true = default
     false = default
     none = default
+
     class Context(Context):
         global_state: Type["GlobalState"]
+
         def run(
-                self,
-                bash: Union[_Shell, str],
-                *,
-                cmd: Union[_Shell, str] = ps,
-                ps: Union[_Shell, str] = cmd,
-                env: Dict[str,str] = default,
-                echo: bool = false,
-                dry: bool = false,
-                shell: str = default,
-                asynchronous: bool = false,
-                disown: bool = false,
-                echo_format: str = default,
-                echo_stdin: Optional[bool] = none,
-                encoding: Optional[str] = none,
-                err_stream = none,
-                fallback: bool = true,
-                in_stream = none,
-                out_stream = none,
-                pty: bool = false,
-                replace_env: bool = false,
-                timeout: Optional[seconds] = none,
-                warn: bool = false,
-                watchers = default,
+            self,
+            bash: Union[_Shell, str],
+            *,
+            cmd: Union[_Shell, str] = ps,
+            ps: Union[_Shell, str] = cmd,
+            env: Dict[str, str] = default,
+            echo: bool = false,
+            dry: bool = false,
+            shell: str = default,
+            asynchronous: bool = false,
+            disown: bool = false,
+            echo_format: str = default,
+            echo_stdin: Optional[bool] = none,
+            encoding: Optional[str] = none,
+            err_stream=none,
+            fallback: bool = true,
+            in_stream=none,
+            out_stream=none,
+            pty: bool = false,
+            replace_env: bool = false,
+            timeout: Optional[seconds] = none,
+            warn: bool = false,
+            watchers=default,
         ) -> Result:
             ...
+
 
 #############################################
 
 old_Call_make_context = Call.make_context
+
+
 def new_Call_make_context(self, config: "Config") -> Context:
     context = Context(config=config)
     context.global_state = GlobalState
     GlobalState.current_call = self
     GlobalState.current_task = self.task
     return context
+
+
 Call.make_context = new_Call_make_context
 
 #############################################
 
 old_Task_eq = Task.__eq__
+
+
 def new_Task_eq(self, other):
     if not old_Task_eq(self, other):
         return False
     if self.__module__ != other.__module__:
         return False
     return True
+
+
 Task.__eq__ = new_Task_eq
 
 old_Task_hash = Task.__hash__
+
+
 def new_Task_hash(self):
     return old_Task_hash(self) + hash(self.__module__)
+
+
 Task.__hash__ = new_Task_hash
 
 #############################################
 
 import pkg_resources
+
 
 def is_package_installed(package_name):
     try:
@@ -216,10 +255,13 @@ def is_package_installed(package_name):
     except pkg_resources.DistributionNotFound:
         return False
 
+
 def package_path(package_name):
     return Path(pkg_resources.get_distribution(package_name).location)
 
+
 #############################################
+
 
 class GlobalState:
     """Holds global state. Use as Class"""
@@ -231,15 +273,18 @@ class GlobalState:
 
 #############################################
 
+
 def task(*args, **kwargs):
     if os.environ.get("RPYINVOKE_NO_PRE", False):
         args = []
         kwargs.pop("pre", None)
     return _task(*args, **kwargs)
 
+
 class NoExecuteExecutor(Executor):
     calls: List[Call] = []
     tasks: List[Task] = []
+
     def execute(self, *tasks) -> Dict[Task, Result]:
         calls = self.normalize(tasks)
         direct = list(calls)
@@ -253,16 +298,17 @@ class NoExecuteExecutor(Executor):
         NoExecuteExecutor.tasks = [call.task for call in calls]
         return {}
 
+
 def get_full_task_name(program: Program, task: Task):
     for name, t in program.collection.tasks.items():
         if t == task:
             return f"{name}"
-    
+
     for collection in program.collection.collections.values():
         for name, t in collection.tasks.items():
             if t == task:
                 return f"{collection.name}.{name}"
-    
+
     raise ValueError(f"Task {task} not found in program {program}")
 
 
@@ -285,35 +331,41 @@ def generate_github_actions_():
                 for idx in range(len(steps)):
                     step = steps[idx]
                     if step.get("name", None) == "#invoke":
-                        launcher, argv = step["run"].strip().split("invoke ", maxsplit=1)
+                        launcher, argv = (
+                            step["run"].strip().split("invoke ", maxsplit=1)
+                        )
                         launcher = launcher.strip()
                         argv = argv.strip()
                         program = Program(executor_class=NoExecuteExecutor)
                         # program.run(argv)
                         program.run(["invoke", *argv.split(" ")])
                         tasks = NoExecuteExecutor.tasks
-                        full_task_names = [get_full_task_name(program, task) for task in tasks]
-                        
+                        full_task_names = [
+                            get_full_task_name(program, task) for task in tasks
+                        ]
+
                         for task_name in reversed(full_task_names):
                             step2 = step.copy()
                             step2["name"] = task_name
-                            step2.yaml_add_eol_comment(f"For tasks {argv}, Autogenerated by invoke.", "name")
+                            step2.yaml_add_eol_comment(
+                                f"For tasks {argv}, Autogenerated by invoke.", "name"
+                            )
                             # __import__('code').interact(local={**globals(), **locals()})
 
-                            step2["run"] = f"RPYINVOKE_NO_PRE=1 {launcher} invoke {task_name}"
+                            step2[
+                                "run"
+                            ] = f"RPYINVOKE_NO_PRE=1 {launcher} invoke {task_name}"
                             # step2["run"] = f"{launcher} invoke {task_name}"
                             steps.insert(idx + 1, step2)
-                        
+
                         del steps[idx]
 
                         break
                 else:
                     break
-        
+
         path = Path(".github/workflows/", preworkflow.name)
         path.unlink(missing_ok=True)
         yaml.dump(data, path)
-
-        
 
         # __import__('code').interact(local={**globals(), **locals()})

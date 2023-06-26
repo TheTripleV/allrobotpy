@@ -15,4 +15,3 @@ except FileNotFoundError:
     if not exists(join(_root, "lib", "libhalsim_ds_socket.dylib")):
         raise FileNotFoundError("libhalsim_ds_socket.dylib was not found on your system. Is this package correctly installed?")
     raise FileNotFoundError("libhalsim_ds_socket.dylib could not be loaded. There is a missing dependency.")
-
