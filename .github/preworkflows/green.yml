@@ -1,0 +1,92 @@
+---
+name: green
+
+on:
+  pull_request:
+  push:
+    # tags:
+    # - '*'
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # This job limits concurrency on the default branch
+  # - we want it to run so it can populate ccache, but we typically
+  #   don't care about when it completes, so limit its concurrency
+  #   to stop eating up valuable + slow Windows/macOS runners
+  setup_concurrency:
+    runs-on: ubuntu-latest
+    outputs:
+      max-parallel: ${{ steps.max-parallel.outputs.p }}
+    steps:
+    - name: Setup concurrency
+      shell: bash
+      id: max-parallel
+      run: |
+        if [[ "${{ github.ref_name }}" == "${{ inputs.default_branch }}" ]]; then
+          echo "PARALLEL=1"
+          echo "p={\"v\": 1}" >> $GITHUB_OUTPUT
+        else
+          echo "PARALLEL=10000"
+          echo "p={\"v\": 10000}" >> $GITHUB_OUTPUT
+        fi
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: psf/black@stable
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: ${{ fromJSON(needs.setup_concurrency.outputs.max-parallel).v }}
+      matrix:
+        # os: [ubuntu-22.04, macos-11, windows-2022]
+        os: [ubuntu-22.04]
+        python_version:
+        # - '3.8'
+        # - '3.9'
+        # - '3.10'
+        - '3.11'
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python_version }}
+
+    - name: Set ccache variant
+      shell: bash
+      id: ccache
+      run: |
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          echo "VARIANT=sccache" >> $GITHUB_OUTPUT
+          echo "INVOKE_CC_LAUNCHER=sccache" >> $GITHUB_ENV
+        else
+          echo "VARIANT=ccache" >> $GITHUB_OUTPUT
+          echo "INVOKE_CC_LAUNCHER=ccache" >> $GITHUB_ENV
+        fi
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+          key: ${{ matrix.os }}-${{ matrix.python_version }}
+          variant: ${{ steps.ccache.outputs.variant }}
+
+    - name: Install Robotpy Build
+      shell: bash
+      run: |
+        python -m pip install --upgrade 'robotpy-build @ git+https://github.com/robotpy/robotpy-build@TheTripleV-patch-1'
+
+    - name: "install invoke"
+      shell: bash
+      run: |
+        python -m pip install invoke
+
+    - name: "#invoke"
+      shell: bash
+      run: python -m invoke build-and-test

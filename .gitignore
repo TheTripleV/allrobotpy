@@ -1,2 +1,10 @@
 .python-version
 .venv
+
+py.typed
+*.pyc
+*.last_file
+
+__pycache__
+
+**/.pytest_cache
