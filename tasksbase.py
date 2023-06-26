@@ -127,7 +127,8 @@ def get_package_name(ctx: Context):
         return tomllib.loads((Path(ctx.cwd) / "pyproject.toml").read_text())["tool"][
             "robotpy-build"
         ]["metadata"]["name"]
-    except:
+    except Exception as e:
+        print(e)
         return None
 
 
