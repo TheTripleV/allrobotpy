@@ -103,8 +103,8 @@ elif sys.platform == "win32":
     except subprocess.CalledProcessError:
         default_shell = cmd = _Shell("cmd")
 else:
-    print(f"Could not detect shell, defaulting to current shell ({_shell}) and pretending it's bash")
-    default_shell = bash = _Shell(_shell)
+    print(f"Could not detect shell, defaulting to /bin/bash")
+    default_shell = bash = _Shell("/bin/bash")
 
 #############################################
 # Context.run monkeypatch's
@@ -276,8 +276,11 @@ class GlobalState:
 
 def task(*args, **kwargs):
     if os.environ.get("RPYINVOKE_NO_PRE", False):
-        args = []
-        kwargs.pop("pre", None)
+        if len(args) == 1 and callable(args[0]) and not isinstance(args[0], Task):
+            ...
+        else:
+            args = []
+            kwargs.pop("pre", None)
     return _task(*args, **kwargs)
 
 
