@@ -103,8 +103,8 @@ elif sys.platform == "win32":
     except subprocess.CalledProcessError:
         default_shell = cmd = _Shell("cmd")
 else:
-    print("Could not detect shell, defaulting to bash")
-    default_shell = bash = _Shell("bash")
+    print(f"Could not detect shell, defaulting to current shell ({_shell}) and pretending it's bash")
+    default_shell = bash = _Shell(_shell)
 
 #############################################
 # Context.run monkeypatch's
