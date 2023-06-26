@@ -46,16 +46,19 @@ jobs:
     strategy:
       max-parallel: ${{ fromJSON(needs.setup_concurrency.outputs.max-parallel).v }}
       matrix:
-        # os: [ubuntu-22.04, macos-11, windows-2022]
-        os: [ubuntu-22.04]
+        os: [ubuntu-22.04, macos-11, windows-2022]
+        # os: [ubuntu-22.04]
         python_version:
-        # - '3.8'
-        # - '3.9'
-        # - '3.10'
+        - '3.8'
+        - '3.9'
+        - '3.10'
         - '3.11'
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
     - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python_version }}
