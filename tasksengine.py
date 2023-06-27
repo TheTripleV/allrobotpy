@@ -116,10 +116,12 @@ def detect_shell_variant(shell_path: str) -> Union[_Shell, None]:
 
 
 detected_shell = detect_shell_variant(_shell)
-if detected_shell is None:
+if not detected_shell:
     debug(f"Could not detect shell, defaulting to /bin/bash")
     default_shell = bash = _Shell("/bin/bash")
 
+if not _shell.startswith('"') and not _shell.endswith('"'):
+    _shell = f'"{_shell}"'
 if detected_shell is ps:
     default_shell = ps = _Shell(_shell)
     debug(f"Detected powershell: {ps}")
