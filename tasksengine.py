@@ -205,6 +205,7 @@ def new_Context__run(
         command, shell=detect_shell_variant(kwargs["shell"])
     )
     if platform.system() == "Windows" and detect_shell_variant(kwargs["shell"]) is bash:
+        command = command.replace("\\", "/")
         command = f'"{kwargs["shell"]}" -c "{command}"'
         del kwargs["shell"]
 
