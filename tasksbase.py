@@ -150,7 +150,7 @@ def _up_to_date(ctx: Context, package_name=None):
 
     trackables = [
         Path(ctx.cwd) / path
-        for path in ctx.run("git ls-files --exclude-standard -o -c").stdout.splitlines()
+        for path in ctx.run("git ls-files --exclude-standard -o -c", hide="stdout").stdout.splitlines()
     ]
 
     if package_path(package_name).resolve() == Path(ctx.cwd).resolve():

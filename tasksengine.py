@@ -121,8 +121,6 @@ if not detected_shell:
     debug(f"Could not detect shell, defaulting to /bin/bash")
     default_shell = bash = _Shell("/bin/bash")
 
-if not _shell.startswith('"') and not _shell.endswith('"'):
-    _shell = f'"{_shell}"'
 if detected_shell is ps:
     default_shell = ps = _Shell(_shell)
     debug(f"Detected powershell: {ps}")
@@ -188,10 +186,6 @@ def new_Context_run(self, *args, **kwargs):
         command = args[0]
     else:
         command = lookup(default_shell)
-    
-    if platform.system() == "Windows" and detect_shell_variant(kwargs["shell"]) is bash:
-        command = f'{kwargs["shell"]} -c "{command}"'
-        del kwargs["shell"]
 
     return old_Context_run(self, command, **kwargs)
 
@@ -210,6 +204,12 @@ def new_Context__run(
     command = self._prefix_commands(
         command, shell=detect_shell_variant(kwargs["shell"])
     )
+    if platform.system() == "Windows" and detect_shell_variant(kwargs["shell"]) is bash:
+        command = f'"{kwargs["shell"]}" -c "{command}"'
+        del kwargs["shell"]
+
+    # print(f"Running: {command}")
+
     return runner.run(command, **kwargs)
 
 
