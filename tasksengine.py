@@ -18,6 +18,7 @@ from pathlib import Path
 import os
 import sys
 import subprocess
+import platform
 
 from typing import (
     TYPE_CHECKING,
@@ -187,6 +188,10 @@ def new_Context_run(self, *args, **kwargs):
         command = args[0]
     else:
         command = lookup(default_shell)
+    
+    if platform.system() == "Windows" and detect_shell_variant(kwargs["shell"]) is bash:
+        command = f'{kwargs["shell"]} -c "{command}"'
+        del kwargs["shell"]
 
     return old_Context_run(self, command, **kwargs)
 
