@@ -8,6 +8,8 @@ from invoke.runners import Runner, Result
 from invoke.program import Program
 from invoke.executor import Executor
 
+from invoke.util import debug
+
 import subprocess
 import importlib
 import importlib.util
@@ -33,8 +35,13 @@ from typing import (
 from dataclasses import dataclass
 
 import shellingham
+import pkg_resources
+
+import inspect
 
 #############################################
+# Get the root of the git repo for later
+
 root = Path(
     subprocess.run(
         ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
@@ -43,17 +50,9 @@ root = Path(
 """Root of Git Repo"""
 
 #############################################
-import inspect
+# Load the root as a module so dot imports work
+# We should import .wpiutil._tasks instead of wpiutil._tasks so the package doesn't get imported
 
-
-def here() -> Path:
-    """Returns the path of the file that called this function"""
-    return Path(inspect.stack()[1].filename).parent
-
-
-#############################################
-
-# Load the root as a module so local imports work
 MODULE_PATH = root / "__init__.py"
 MODULE_NAME = "allrobotpy"
 spec = importlib.util.spec_from_file_location(MODULE_NAME, MODULE_PATH)
@@ -62,18 +61,18 @@ sys.modules[spec.name] = module  # type: ignore
 
 
 #############################################
-def boolify(value) -> bool:
-    """Check if a string's contents are truthy or falsy"""
-    try:
-        if isinstance(value, bool):
-            return value
-        return bool(eval(value))
-    except:
-        raise ValueError(f"Could not convert {value} to bool")
+# All tasks working directory is the root of the git repo
+# here() is used to fixup subdirectory working directories
+
+
+def here() -> Path:
+    """Returns the path of the file that called this function"""
+    return Path(inspect.stack()[1].filename).parent
 
 
 #############################################
 # Detect the current shell and setup shell sentinels
+# Supports detecting bash, powershell, and cmd
 
 
 @dataclass(frozen=True)
@@ -88,68 +87,90 @@ cmd = _Shell("cmd_with_no_path")
 
 try:
     _shell = shellingham.detect_shell()[1]
+    debug(f"Shellingham Detected shell: {_shell}")
 except shellingham.ShellDetectionFailure:
-    _shell = os.getenv("SHELL", "")
+    _shell = os.getenv("SHELL", "").lower()
+    debug(f"Shellingham failed, using SHELL env var: {_shell}")
 
-if "pwsh" in _shell:
-    default_shell = ps = _Shell(_shell)
-elif "powershell" in _shell:
-    default_shell = ps = _Shell(_shell)
-elif "bash" in _shell:
-    default_shell = bash = _Shell(_shell)
-elif _shell.endswith("sh"):
-    default_shell = bash = _Shell(_shell)
-elif sys.platform == "win32":
-    # If Windows platform
-    try:
-        # Check if we're in PowerShell
-        subprocess.check_output("Get-Command", shell=True)
-        default_shell = ps = _Shell("PowerShell")
-    except subprocess.CalledProcessError:
-        default_shell = cmd = _Shell("cmd")
-else:
-    print(f"Could not detect shell, defaulting to /bin/bash")
+
+def detect_shell_variant(shell_path: str) -> Union[_Shell, None]:
+    global bash, ps, cmd
+    if "pwsh" in shell_path:
+        debug(f"Detected powershell: {ps}")
+        return ps
+    elif "powershell" in _shell:
+        debug(f"Detected powershell: {ps}")
+        return ps
+    elif "bash" in _shell:
+        debug(f"Detected bash: {bash}")
+        return bash
+    elif _shell.endswith("sh"):
+        debug(f"Detected bash: {bash}")
+        return bash
+    elif "cmd" in _shell:
+        debug(f"Detected cmd: {cmd}")
+        return cmd
+    else:
+        debug(f"Could not detect shell")
+        return None
+
+
+detected_shell = detect_shell_variant(_shell)
+if detected_shell is None:
+    debug(f"Could not detect shell, defaulting to /bin/bash")
     default_shell = bash = _Shell("/bin/bash")
 
-#############################################
-# Context.run monkeypatch's
-# 1. actually add type hints
-# 2. use the user's shell by default (instead of just bash or cmd)
-# 3. let different commands be specified for bash, ps, and cmd
-# Default echo to True
+if detected_shell is ps:
+    default_shell = ps = _Shell(_shell)
+    debug(f"Detected powershell: {ps}")
+elif detected_shell is cmd:
+    default_shell = cmd = _Shell(_shell)
+    debug(f"Detected cmd: {cmd}")
+elif detected_shell is bash:
+    default_shell = bash = _Shell(_shell)
+    debug(f"Detected bash: {bash}")
 
-# class Context(invoke.context.Context):
+
+#############################################
+# Create a dumping ground for global state
+class GlobalState:
+    """Holds global state. Use as Class"""
+
+    current_task: Optional[Task] = None
+    current_call: Optional[Call] = None
+    up_to_date: Dict[Task, bool] = {}
+
+
+#############################################
+
+####################
+# Setup default working directory to repo root instead of the terminal's cwd
+# Add GlobalState so we can pull internal data out for later (up to date)
+
 old_Context_init = Context.__init__
 
 
 def new_Context_init(self, config: Optional[Config] = None) -> None:
     old_Context_init(self, config)
-    self.command_cwds.append(root)
+    self.command_cwds.append(str(root))
     self.global_state = GlobalState
 
 
 Context.__init__ = new_Context_init
 
+####################
+# Setup default shell to the user's terminal instead of forcing cmd on windows and bash on linux/macos
+# Allow using different commands for different shells (bash, ps, cmd)
+
 old_Context_run = Context.run
 
 
 def new_Context_run(self, *args, **kwargs):
-    if "shell" not in kwargs:
-        kwargs["shell"] = default_shell.path
-
-    if "bash" in kwargs:
-        _bash = kwargs["bash"]
-    else:
-        _bash = args[0]
-
-    _ps = kwargs.get("ps", cmd)
-    _cmd = kwargs.get("cmd", ps)
-
-    if _cmd is ps and _ps is cmd:
-        _cmd = bash
-        _ps = bash
-
-    d = {bash: _bash, ps: _ps, cmd: _cmd}
+    d = {
+        bash: kwargs.pop("bash", None),
+        ps: kwargs.pop("ps", cmd),
+        cmd: kwargs.pop("cmd", ps),
+    }
 
     def lookup(key):
         v = d[key]
@@ -157,19 +178,59 @@ def new_Context_run(self, *args, **kwargs):
             return lookup(v)
         return v
 
-    command = lookup(default_shell)
+    if "shell" not in kwargs:
+        kwargs["shell"] = default_shell.path
 
-    kwargs.pop("bash", None)
-    kwargs.pop("ps", None)
-    kwargs.pop("cmd", None)
-
-    if "echo" not in kwargs:
-        kwargs["echo"] = True
+    if len(args) == 1 and isinstance(args[0], str):
+        command = args[0]
+    else:
+        command = lookup(default_shell)
 
     return old_Context_run(self, command, **kwargs)
 
 
 Context.run = new_Context_run
+
+####################
+# Propogate the chosen shell into the command prefixer so we can use the correct syntax for each shell
+
+old_Context__run = Context._run
+
+
+def new_Context__run(
+    self, runner: "Runner", command: str, **kwargs: Any
+) -> Optional[Result]:
+    command = self._prefix_commands(
+        command, shell=detect_shell_variant(kwargs["shell"])
+    )
+    return runner.run(command, **kwargs)
+
+
+Context._run = new_Context__run
+
+####################
+# Redo the command prefixer to use the correct syntax for each shell
+
+old_Context__prefix_commands = Context._prefix_commands
+
+
+def new_Context__prefix_commands(self, command: str, shell=None) -> str:
+    prefixes = list(self.command_prefixes)
+    current_directory = self.cwd
+    if current_directory:
+        prefixes.insert(0, "cd {}".format(current_directory))
+
+    if shell is ps:
+        # return "; if ($?) {".join(prefixes + [command]) + "}" * len(prefixes)
+        return " ; if (-not $?) {exit $?}; ".join(prefixes + [command])
+    return " && ".join(prefixes + [command])
+
+
+Context._prefix_commands = new_Context__prefix_commands
+
+#############################################
+# Add type hints for the new Context.run() arguments
+# The libraries type hints are broken and unusable anyway
 
 if TYPE_CHECKING:
     seconds = float
@@ -183,8 +244,9 @@ if TYPE_CHECKING:
 
         def run(
             self,
-            bash: Union[_Shell, str],
+            command: Optional[str] = none,
             *,
+            bash: Union[_Shell, str] = none,
             cmd: Union[_Shell, str] = ps,
             ps: Union[_Shell, str] = cmd,
             env: Dict[str, str] = default,
@@ -210,6 +272,7 @@ if TYPE_CHECKING:
 
 
 #############################################
+# A Context is made right before a command is run, so we dump the current state into GlobalState here
 
 old_Call_make_context = Call.make_context
 
@@ -225,6 +288,8 @@ def new_Call_make_context(self, config: "Config") -> Context:
 Call.make_context = new_Call_make_context
 
 #############################################
+# Fix the Task equality check and hash to include the module name
+# By default a task is equal to another task if they have the same name/code, even if they are in different modules
 
 old_Task_eq = Task.__eq__
 
@@ -249,8 +314,7 @@ def new_Task_hash(self):
 Task.__hash__ = new_Task_hash
 
 #############################################
-
-import pkg_resources
+# Helper functions to check if a package is installed and get its installed location
 
 
 def is_package_installed(package_name):
@@ -266,17 +330,7 @@ def package_path(package_name):
 
 
 #############################################
-
-
-class GlobalState:
-    """Holds global state. Use as Class"""
-
-    current_task: Optional[Task] = None
-    current_call: Optional[Call] = None
-    up_to_date: Dict[Task, bool] = {}
-
-
-#############################################
+# Put in a copout to ignore dependenices - RPYINVOKE_NO_PRE
 
 
 def task(*args, **kwargs):
@@ -287,6 +341,10 @@ def task(*args, **kwargs):
             args = []
             kwargs.pop("pre", None)
     return _task(*args, **kwargs)
+
+
+#############################################
+# Add a new executor that just records the calls and tasks that would be executed
 
 
 class NoExecuteExecutor(Executor):
@@ -318,6 +376,10 @@ def get_full_task_name(program: Program, task: Task):
                 return f"{collection.name}.{name}"
 
     raise ValueError(f"Task {task} not found in program {program}")
+
+
+#############################################
+# Generate github actions for all tasks
 
 
 def generate_github_actions_():

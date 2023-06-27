@@ -97,6 +97,8 @@ namespace.configure(
         # "skip_installed_deps": True,
         "run": {
             # "hide": "both",
+            # "hide": False,
+            "echo": True
         },
     }
 )

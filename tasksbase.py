@@ -44,7 +44,7 @@ def build_wheel_(ctx: Context):
         env={
             "RPYBUILD_PARALLEL": str(int(ctx.parallel)),
             "RPYBUILD_CC_LAUNCHER": ctx.cc_launcher,
-            "MACOSX_DEPLOYMENT_TARGET": ctx.macos_target,
+            # "MACOSX_DEPLOYMENT_TARGET": ctx.macos_target,
             "RPYBUILD_STRIP_LIBPYTHON": str(int(ctx.strip_libpython)),
         },
     )
@@ -54,7 +54,7 @@ def build_wheel_(ctx: Context):
 
     for path in Path(ctx.cwd).glob(f"./dist/*{orig_plat_tag}.whl"):
         new_path = path.replace(
-            path.with_stem(path.stem.replace(orig_plat_tag, manylinux_tag))
+            path.with_name(path.name.replace(orig_plat_tag, manylinux_tag))
         )
         print(f"Renamed {path} to {new_path}")
 
@@ -63,7 +63,7 @@ def build_wheel_(ctx: Context):
 
     for path in Path(ctx.cwd).glob(f"./dist/*{orig_plat_tag}.whl"):
         new_path = path.replace(
-            path.with_stem(path.stem.replace(orig_plat_tag, mac_compat_tag))
+            path.with_name(path.name.replace(orig_plat_tag, mac_compat_tag))
         )
         print(f"Renamed {path} to {new_path}")
 
@@ -118,6 +118,7 @@ def up_to_date(ctx: Context, package_name=None):
 
 
 def get_package_name(ctx: Context):
+    # __import__('code').interact(local={**globals(), **locals()})
     try:
         import tomllib
     except ModuleNotFoundError:
