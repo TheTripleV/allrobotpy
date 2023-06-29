@@ -91,6 +91,7 @@ namespace.configure(
         "parallel": True,
         # "parallel": False,
         "cc_launcher": "ccache",
+        # "cc_launcher": "",
         "macos_target": "11",
         "strip_libpython": True,
         "skip_installed_deps": False,
