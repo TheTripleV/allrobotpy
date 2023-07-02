@@ -34,6 +34,29 @@ for module in everything:
         Collection.from_module(module, name=module.__package__.split(".")[-1])
     )
 
+for collection_name, collection in namespace.collections.items():
+    # hack so if you are in a subdirectory, `.task` will point to `subdir.task`
+    try:
+        subdir = str(Path(os.getcwd()).relative_to(root).parts[0])
+    except IndexError:
+        subdir = ""
+    except ValueError:
+        break
+
+    if not subdir == collection_name:
+        continue
+    for task_name, task_ in collection.tasks.items():
+        @task(
+            name=","+task_name,
+            pre=[task_],
+            aliases=["."+task_name,],
+        )
+        def dummy_task(_):
+            pass
+        dummy_task.__doc__ = collection_name+"."+task_name
+        namespace.add_task(dummy_task) # type: ignore
+
+
 # namespace.add_collection(Collection.from_module(hal_tasks), name="hal")
 # namespace.add_collection(Collection.from_module(halsim_ds_socket_tasks), name="halsim_ds_socket")
 # namespace.add_collection(Collection.from_module(halsim_gui_tasks), name="halsim_gui")
@@ -76,6 +99,9 @@ def clean(ctx: Context):
 def generate_github_actions(ctx: Context):
     generate_github_actions_()
 
+@task
+def python(ctx: Context):
+    subprocess.run("python", cwd=Path(ctx.cwd, "nothing/").resolve())
 
 namespace.add_task(develop)  # type: ignore
 namespace.add_task(build_wheel)  # type: ignore
@@ -83,7 +109,7 @@ namespace.add_task(test)  # type: ignore
 namespace.add_task(build_and_test)  # type: ignore
 namespace.add_task(clean)  # type: ignore
 namespace.add_task(generate_github_actions)  # type: ignore
-
+namespace.add_task(python)  # type: ignore
 
 namespace.configure(
     {

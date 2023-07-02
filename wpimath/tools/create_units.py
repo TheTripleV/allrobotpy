@@ -56,11 +56,11 @@ for f in sorted(pathlib.Path(sys.argv[1]).glob("*.h")):
                         f"""
                 
                     template <> struct handle_type_name<units::{single}_t> {{
-                    static constexpr auto name = _("{double}");
+                    static constexpr auto name = _("STUBGEN_CPP_{double}_IS_PY_float_STUBGEN");
                     }};
 
                     template <> struct handle_type_name<units::{double}> {{
-                    static constexpr auto name = _("{double}");
+                    static constexpr auto name = _("STUBGEN_CPP_{double}_IS_PY_float_STUBGEN");
                     }};
 
                 """

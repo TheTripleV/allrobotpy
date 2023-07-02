@@ -91,7 +91,7 @@ def test_(ctx: Context):
 
 def clean_(ctx: Context):
     ctx.run(
-        bash="rm -rf ./build ./dist ./.editable.last_file ./.wheel.last_file",
+        bash="rm -rf ./dist ./.editable.last_file ./.wheel.last_file",
         # cmd="del /s /q build dist .last_file",
         # ps="Remove-Item -Recurse -Force ./build, ./dist, ./.last_file",
     )
