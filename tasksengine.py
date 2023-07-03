@@ -140,10 +140,26 @@ class GlobalState:
     current_task: Optional[Task] = None
     current_call: Optional[Call] = None
     up_to_date: Dict[Task, bool] = {}
+    num_calls_in_execution = 0
+    running_call_idx = -1
+    program: Program
 
 
 #############################################
+# Record the number of calls that will be executed
 
+old_Executor_dedupe = Executor.dedupe
+
+
+def new_Executor_dedupe(*args, **kwargs):
+    result = old_Executor_dedupe(*args, **kwargs)
+    GlobalState.num_calls_in_execution = len(result)
+    return result
+
+
+Executor.dedupe = new_Executor_dedupe
+
+#############################################
 ####################
 # Setup default working directory to repo root instead of the terminal's cwd
 # Add GlobalState so we can pull internal data out for later (up to date)
@@ -290,6 +306,7 @@ def new_Call_make_context(self, config: "Config") -> Context:
     context.global_state = GlobalState
     GlobalState.current_call = self
     GlobalState.current_task = self.task
+    GlobalState.running_call_idx += 1
     return context
 
 
@@ -336,6 +353,15 @@ def is_package_installed(package_name):
 def package_path(package_name):
     return Path(pkg_resources.get_distribution(package_name).location)
 
+
+#############################################
+# get reference to program
+
+old_Program_execute = Program.execute
+def new_Program_execute(self, *args, **kwargs):
+    GlobalState.program = self
+    old_Program_execute(self, *args, **kwargs)
+Program.execute = new_Program_execute
 
 #############################################
 # Put in a copout to ignore dependenices - RPYINVOKE_NO_PRE
@@ -447,3 +473,66 @@ def generate_github_actions_():
         yaml.dump(data, path)
 
         # __import__('code').interact(local={**globals(), **locals()})
+
+#############################################
+# Show progress bar
+if os.getenv("CI") is None:
+    import atexit
+    from datetime import datetime
+    import time
+    import threading
+
+    import rich.progress
+    import rich.columns
+    import rich.text
+    import rich.panel
+
+    class NumTaskColumn(rich.progress.ProgressColumn):
+        def render(self, task: rich.progress.Task) -> rich.text.Text:
+            return rich.text.Text(f"{task.completed}/{task.total}" , style="purple")
+
+
+    current_hour = datetime.now().hour
+    if current_hour >= 7 and current_hour < 12 + 9:
+        spinner_name = "earth"
+    else:
+        spinner_name = "moon"
+
+    def progress_bar_worker():
+        with rich.progress.Progress(
+            rich.progress.SpinnerColumn(spinner_name=spinner_name),
+            rich.progress.TextColumn("[progress.description]{task.description}"),
+            rich.progress.BarColumn(),
+            NumTaskColumn(),
+            rich.progress.TimeElapsedColumn(),
+        ) as progress:
+            task1 = progress.add_task("")
+
+            old_current_task = None
+            name = ""
+            while not progress.finished:
+                current_task = GlobalState.current_task
+                if current_task is not None:
+                    if current_task != old_current_task:
+                        old_current_task = current_task
+                        name = get_full_task_name(GlobalState.program, current_task)
+                    elif current_task.called == True:
+                        GlobalState.running_call_idx += 1
+                    elif threading.main_thread().is_alive() == False:
+                        exit()
+                else:
+                    name = ""
+                
+                progress.update(
+                    task1,
+                    description=name,
+                    total=GlobalState.num_calls_in_execution or 99,
+                    completed=GlobalState.running_call_idx
+                )
+                # print(GlobalState.num_calls_in_execution)
+                time.sleep(0.02)
+                # print(GlobalState.program)
+
+
+    print_list_thread = threading.Thread(target=progress_bar_worker)
+    print_list_thread.start()

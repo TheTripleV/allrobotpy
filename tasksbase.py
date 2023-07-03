@@ -14,12 +14,20 @@ def develop_(ctx: Context):
     ctx.run(
         f"{ctx.python} -m pip uninstall -y {get_package_name(ctx)}",
     )
+
+    env = {
+        "RPYBUILD_PARALLEL": str(int(ctx.parallel)),
+        "RPYBUILD_CC_LAUNCHER": ctx.cc_launcher,
+    }
+
+    if ctx.config.no_generation:
+        # print("Skipping generation")
+        env["RPYBUILD_GEN_FILTER"] = root / "filter.yml"
+        # print(env["RPYBUILD_GEN_FILTER"])
+
     ctx.run(
         f"{ctx.python} setup.py develop",
-        env={
-            "RPYBUILD_PARALLEL": str(int(ctx.parallel)),
-            "RPYBUILD_CC_LAUNCHER": ctx.cc_launcher,
-        },
+        env=env,
     )
     Path(ctx.cwd, ".editable.last_file").unlink(missing_ok=True)
     Path(ctx.cwd, ".editable.last_file").touch()
