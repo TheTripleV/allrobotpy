@@ -476,6 +476,14 @@ def generate_github_actions_():
 
 #############################################
 # Show progress bar
+
+if platform.system() == "Windows":
+    # Windows is weird. When the output is
+    # redirected, most if it is completely blank
+    redirect = False
+else:
+    redirect = True
+
 if os.getenv("CI") is None:
     import atexit
     from datetime import datetime
@@ -505,6 +513,8 @@ if os.getenv("CI") is None:
             rich.progress.BarColumn(),
             NumTaskColumn(),
             rich.progress.TimeElapsedColumn(),
+            redirect_stderr=redirect,
+            redirect_stdout=redirect,
         ) as progress:
             task1 = progress.add_task("")
 

@@ -67,14 +67,20 @@ jobs:
       shell: bash
       id: ccache
       run: |
-        echo "VARIANT=ccache" >> $GITHUB_OUTPUT
-        echo "INVOKE_CC_LAUNCHER=ccache" >> $GITHUB_ENV
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          echo "VARIANT=sccache" >> $GITHUB_OUTPUT
+          echo "INVOKE_CC_LAUNCHER=sccache" >> $GITHUB_ENV
+        else
+          echo "VARIANT=ccache" >> $GITHUB_OUTPUT
+          echo "INVOKE_CC_LAUNCHER=ccache" >> $GITHUB_ENV
+        fi
 
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ matrix.os }}-${{ matrix.python_version }}
         variant: ${{ steps.ccache.outputs.variant }}
+        max-size: 999M
 
     - name: Install Robotpy Build
       shell: bash
