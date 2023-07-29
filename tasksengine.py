@@ -521,6 +521,8 @@ if os.getenv("CI") is None:
             old_current_task = None
             name = ""
             while not progress.finished:
+                if GlobalState.running_call_idx == -1 and threading.main_thread().is_alive() == False:
+                    exit()
                 current_task = GlobalState.current_task
                 if current_task is not None:
                     if current_task != old_current_task:
@@ -543,6 +545,33 @@ if os.getenv("CI") is None:
                 time.sleep(0.02)
                 # print(GlobalState.program)
 
+                # print(threading.main_thread().is_alive())
+
 
     print_list_thread = threading.Thread(target=progress_bar_worker)
     print_list_thread.start()
+
+#############################################
+
+def allow_dot_subdir_commands(namespace: Collection):
+    # hack so if you are in a subdirectory, `.task` will point to `subdir.task`
+    for collection_name, collection in namespace.collections.items():
+        try:
+            subdir = str(Path(os.getcwd()).relative_to(root).parts[0])
+        except IndexError:
+            subdir = ""
+        except ValueError:
+            break
+
+        if not subdir == collection_name:
+            continue
+        for task_name, task_ in collection.tasks.items():
+            @task(
+                name=","+task_name,
+                pre=[task_],
+                aliases=["."+task_name,],
+            )
+            def dummy_task(_):
+                pass
+            dummy_task.__doc__ = collection_name+"."+task_name
+            namespace.add_task(dummy_task) # type: ignore
