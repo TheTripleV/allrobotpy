@@ -36,6 +36,7 @@ for module in everything:
 
 allow_dot_subdir_commands(namespace)
 
+
 @task(pre=[t.develop for t in everything])
 def develop(ctx: Context):
     ...
@@ -64,6 +65,7 @@ def clean(ctx: Context):
 @task
 def generate_github_actions(ctx: Context):
     generate_github_actions_()
+
 
 @task
 def python(ctx: Context):

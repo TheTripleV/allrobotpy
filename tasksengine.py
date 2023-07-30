@@ -358,9 +358,13 @@ def package_path(package_name):
 # get reference to program
 
 old_Program_execute = Program.execute
+
+
 def new_Program_execute(self, *args, **kwargs):
     GlobalState.program = self
     old_Program_execute(self, *args, **kwargs)
+
+
 Program.execute = new_Program_execute
 
 #############################################
@@ -474,6 +478,7 @@ def generate_github_actions_():
 
         # __import__('code').interact(local={**globals(), **locals()})
 
+
 #############################################
 # Show progress bar
 
@@ -497,8 +502,7 @@ if os.getenv("CI") is None:
 
     class NumTaskColumn(rich.progress.ProgressColumn):
         def render(self, task: rich.progress.Task) -> rich.text.Text:
-            return rich.text.Text(f"{task.completed}/{task.total}" , style="purple")
-
+            return rich.text.Text(f"{task.completed}/{task.total}", style="purple")
 
     current_hour = datetime.now().hour
     if current_hour >= 7 and current_hour < 12 + 9:
@@ -521,7 +525,10 @@ if os.getenv("CI") is None:
             old_current_task = None
             name = ""
             while not progress.finished:
-                if GlobalState.running_call_idx == -1 and threading.main_thread().is_alive() == False:
+                if (
+                    GlobalState.running_call_idx == -1
+                    and threading.main_thread().is_alive() == False
+                ):
                     exit()
                 current_task = GlobalState.current_task
                 if current_task is not None:
@@ -534,12 +541,12 @@ if os.getenv("CI") is None:
                         exit()
                 else:
                     name = ""
-                
+
                 progress.update(
                     task1,
                     description=name,
                     total=GlobalState.num_calls_in_execution or 99,
-                    completed=GlobalState.running_call_idx
+                    completed=GlobalState.running_call_idx,
                 )
                 # print(GlobalState.num_calls_in_execution)
                 time.sleep(0.02)
@@ -547,11 +554,11 @@ if os.getenv("CI") is None:
 
                 # print(threading.main_thread().is_alive())
 
-
     print_list_thread = threading.Thread(target=progress_bar_worker)
     print_list_thread.start()
 
 #############################################
+
 
 def allow_dot_subdir_commands(namespace: Collection):
     # hack so if you are in a subdirectory, `.task` will point to `subdir.task`
@@ -566,12 +573,16 @@ def allow_dot_subdir_commands(namespace: Collection):
         if not subdir == collection_name:
             continue
         for task_name, task_ in collection.tasks.items():
+
             @task(
-                name=","+task_name,
+                name="," + task_name,
                 pre=[task_],
-                aliases=["."+task_name,],
+                aliases=[
+                    "." + task_name,
+                ],
             )
             def dummy_task(_):
                 pass
-            dummy_task.__doc__ = collection_name+"."+task_name
-            namespace.add_task(dummy_task) # type: ignore
+
+            dummy_task.__doc__ = collection_name + "." + task_name
+            namespace.add_task(dummy_task)  # type: ignore
