@@ -89,8 +89,8 @@ namespace.configure(
         "strip_libpython": True,
         # "skip_installed_deps": True,
         "skip_installed_deps": False,
-        "no_generation": True,
-        # "no_generation": False,
+        # "no_generation": True,
+        "no_generation": False,
         "run": {
             # "hide": "both",
             # "hide": False,

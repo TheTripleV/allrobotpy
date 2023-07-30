@@ -1,0 +1,4 @@
+invoke
+rich
+shellingham
+robotpy_build @ git+https://github.com/robotpy/robotpy-build@main
