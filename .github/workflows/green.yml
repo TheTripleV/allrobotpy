@@ -80,7 +80,7 @@ jobs:
       with:
         key: ${{ matrix.os }}-${{ matrix.python_version }}
         variant: ${{ steps.ccache.outputs.variant }}
-        max-size: 999M
+        max-size: 2.2G
 
     - name: Install Robotpy Build
       shell: bash
